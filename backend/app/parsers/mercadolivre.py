@@ -55,22 +55,26 @@ COL_TOTAL = "Total (BRL)"
 COL_PACOTE = "Pacote de diversos produtos"
 
 # Conjuntos de classificação de status (campo status_erp).
+# Estados confirmados em export real do ML (jun/2026): ver tests/data_real_states.
 CANCELADOS = {
     "Cancelada pelo comprador",
     "Cancelada",
     "Pacote cancelado pelo Mercado Livre",
     "Venda cancelada. Não envie.",
     "Liberamos o dinheiro da venda para você e reembolsamos o comprador",
+    # Reembolso ao comprador = venda revertida (descoberto em dados reais).
+    "Reclamação encerrada com reembolso para o comprador",
+    "Reembolsamos o valor ao comprador",
 }
-DEVOLUCOES = {
-    "Devolução a caminho",
-    "Devolução em preparação",
-    "Devolução finalizada",
-    "Devolução revisada",
-    "Devolução em revisão",
-    "Devolução finalizada com reembolso",
-    "Devolução finalizada. Colocamos o produto à venda novamente",
-    "Devolução a caminho. Vamos revisar o produto",
+
+# Qualquer estado iniciado por "Devolução" é uma devolução. O ML tem dezenas de
+# variações ("Devolução a caminho", "Devolução para revisar até terça-feira",
+# "Devolução revisada. Colocamos o produto novamente à venda", ...); casar pelo
+# prefixo evita ter de enumerar cada uma. ``DEVOLUCOES_EXTRA`` cobre estados de
+# devolução que não começam com a palavra (ex.: "Em devolução").
+DEVOLUCAO_PREFIXO = "Devolução"
+DEVOLUCOES_EXTRA = {
+    "Em devolução",
 }
 
 
@@ -98,7 +102,7 @@ def classificar_status(estado: str) -> str:
     estado = (estado or "").strip()
     if estado in CANCELADOS:
         return STATUS_CANCELADO
-    if any(estado.startswith(prefixo) for prefixo in DEVOLUCOES):
+    if estado.startswith(DEVOLUCAO_PREFIXO) or estado in DEVOLUCOES_EXTRA:
         return STATUS_DEVOLUCAO
     return STATUS_VALIDO
 
