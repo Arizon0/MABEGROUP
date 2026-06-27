@@ -17,6 +17,10 @@ dist/
 # Planilhas reais (dados sensíveis) — não versionar
 backend/tests/data/*.xlsx
 
+# Anexos enviados (uploads de produtos/fornecedores)
+backend/uploads/
+uploads/
+
 # Ambiente
 .env
 .env.local

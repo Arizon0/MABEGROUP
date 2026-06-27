@@ -1,4 +1,10 @@
 import type {
+  Fornecedor,
+  FornecedorCreate,
+  Produto as ProdutoCompleto,
+  ProdutoCreate,
+} from "../types/cadastro";
+import type {
   Produto,
   SkuMap,
   SkuMapCreate,
@@ -20,6 +26,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  // ---- SKU Map ----
   listarSkuMap: (canal?: string) =>
     request<SkuMap[]>(`/api/sku-map${canal ? `?canal=${encodeURIComponent(canal)}` : ""}`),
 
@@ -33,6 +40,32 @@ export const api = {
 
   salvarSkuMap: (payload: SkuMapCreate) =>
     request<SkuMap>(`/api/sku-map`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  // ---- Produtos ----
+  listarProdutosCadastro: (q?: string) =>
+    request<ProdutoCompleto[]>(
+      `/api/produtos${q ? `?q=${encodeURIComponent(q)}` : ""}`,
+    ),
+
+  obterProduto: (id: number) => request<ProdutoCompleto>(`/api/produtos/${id}`),
+
+  criarProduto: (payload: ProdutoCreate) =>
+    request<ProdutoCompleto>(`/api/produtos`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  // ---- Fornecedores ----
+  listarFornecedores: (q?: string) =>
+    request<Fornecedor[]>(
+      `/api/fornecedores${q ? `?q=${encodeURIComponent(q)}` : ""}`,
+    ),
+
+  criarFornecedor: (payload: FornecedorCreate) =>
+    request<Fornecedor>(`/api/fornecedores`, {
       method: "POST",
       body: JSON.stringify(payload),
     }),

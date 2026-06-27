@@ -15,3 +15,6 @@ CORS_ORIGINS: list[str] = os.getenv(
     "CORS_ORIGINS",
     "http://localhost:5173,http://localhost:3000",
 ).split(",")
+
+# Diretório onde os anexos (até 5 por produto/fornecedor) são gravados.
+UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./uploads")

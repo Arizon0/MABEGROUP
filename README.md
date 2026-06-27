@@ -23,6 +23,24 @@ Implementado nesta etapa:
 - **Migrations** Alembic (schema inicial) e **testes** (pytest + Vitest),
   incluindo teste de integração contra as planilhas reais (skip se ausentes).
 
+## Status — Prioridade 2 (Cadastro de Produtos e Fornecedores)
+
+- **Produto** (`backend/app/models/produto.py`): cadastro completo — categoria/
+  subcategoria, atributos livres (JSON), medidas/peso, fiscais (NCM + alíquotas
+  ICMS/PIS/COFINS/IPI), estoque mínimo/segurança, preços, fornecedor padrão e
+  **variantes** (auto-relacionamento produto-pai → variantes).
+- **Fornecedor** (`backend/app/models/fornecedor.py`): CNPJ com **validação de
+  dígito verificador** (`services/validators.py`), endereço completo, N contatos,
+  condições de pagamento e prazo de entrega.
+- **Anexos** (`backend/app/models/anexo.py`): até **5 por produto/fornecedor**
+  (limite na camada de serviço), gravados em `UPLOAD_DIR`.
+- **API**: `GET/POST/PUT /api/produtos` (+ `/{id}/anexos`),
+  `GET/POST/PUT /api/fornecedores` (+ `/{id}/anexos`).
+- **Frontend**: telas **Produtos** e **Fornecedores** (lista + formulário de
+  cadastro, contatos dinâmicos, CNPJ formatado).
+- **Migration** Alembic `767897…` (segura em tabela já populada via
+  `server_default`).
+
 ## Como rodar
 
 ### Backend
