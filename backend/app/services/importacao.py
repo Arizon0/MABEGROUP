@@ -7,8 +7,10 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.produto import Produto
 from app.models.venda import Venda
-from app.parsers.common import VendaDTO
+from app.parsers.common import STATUS_VALIDO, VendaDTO
+from app.services.estoque import baixar_estoque_venda
 from app.services.sku_resolver import SkuResolver
 from app.services.totais import Totais, calcular_totais
 
@@ -22,6 +24,7 @@ class ResultadoImportacao:
     skus_resolvidos: int
     skus_pendentes: int           # sku_canal distintos sem de-para
     totais: Totais
+    baixas_estoque: int = 0       # linhas que geraram baixa de estoque
 
     def as_dict(self) -> dict:
         return {
@@ -31,17 +34,20 @@ class ResultadoImportacao:
             "pedidos_duplicados": self.pedidos_duplicados,
             "skus_resolvidos": self.skus_resolvidos,
             "skus_pendentes": self.skus_pendentes,
+            "baixas_estoque": self.baixas_estoque,
             "totais": self.totais.as_dict(),
         }
 
 
 def importar_vendas(
-    db: Session, vendas: list[VendaDTO], canal: str
+    db: Session, vendas: list[VendaDTO], canal: str, *, baixar_estoque: bool = False
 ) -> ResultadoImportacao:
     """Persiste a lista de vendas de um canal.
 
     - Resolve ``sku_canal`` -> ``sku_base`` (pendência quando não encontrado).
     - Ignora pedidos já importados (mesmo canal + id_pedido_canal) — regra 6.
+    - Quando ``baixar_estoque`` é True, baixa o estoque das vendas válidas no
+      local correspondente ao canal logístico (ML Full -> Fulfillment).
     - Retorna totais agregados do arquivo (independente de duplicidade).
     """
     resolver = SkuResolver(db)
@@ -53,8 +59,16 @@ def importar_vendas(
         ).scalars()
     )
 
+    # Mapa sku_base -> produto_id (só carregado quando vai baixar estoque).
+    produto_por_sku: dict[str, int] = {}
+    if baixar_estoque:
+        produto_por_sku = {
+            p.sku_base: p.id for p in db.execute(select(Produto)).scalars()
+        }
+
     skus_resolvidos = 0
     inseridas = 0
+    baixas = 0
     pedidos_duplicados_ids: set[str] = set()
 
     for dto in vendas:
@@ -74,6 +88,22 @@ def importar_vendas(
         db.add(_dto_to_model(dto))
         inseridas += 1
 
+        if (
+            baixar_estoque
+            and dto.status_erp == STATUS_VALIDO
+            and dto.sku_base in produto_por_sku
+            and dto.qtd > 0
+        ):
+            baixou = baixar_estoque_venda(
+                db,
+                produto_id=produto_por_sku[dto.sku_base],
+                canal_logistico=dto.canal_logistico,
+                qtd=dto.qtd,
+                referencia=f"{canal}:{dto.id_pedido_canal}",
+            )
+            if baixou is not None:
+                baixas += 1
+
     db.flush()
 
     return ResultadoImportacao(
@@ -84,6 +114,7 @@ def importar_vendas(
         skus_resolvidos=skus_resolvidos,
         skus_pendentes=len(resolver.pendencias),
         totais=calcular_totais(vendas),
+        baixas_estoque=baixas,
     )
 
 

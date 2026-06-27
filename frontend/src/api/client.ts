@@ -5,6 +5,12 @@ import type {
   ProdutoCreate,
 } from "../types/cadastro";
 import type {
+  Local,
+  MovimentoIn,
+  RelatorioEstoque,
+  Saldo,
+} from "../types/estoque";
+import type {
   Produto,
   SkuMap,
   SkuMapCreate,
@@ -66,6 +72,20 @@ export const api = {
 
   criarFornecedor: (payload: FornecedorCreate) =>
     request<Fornecedor>(`/api/fornecedores`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  // ---- Estoque ----
+  listarSaldos: (q?: string) =>
+    request<Saldo[]>(`/api/estoque${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+
+  listarLocais: () => request<Local[]>(`/api/estoque/locais`),
+
+  relatorioEstoque: () => request<RelatorioEstoque>(`/api/estoque/relatorio`),
+
+  registrarMovimento: (payload: MovimentoIn) =>
+    request<unknown>(`/api/estoque/movimentos`, {
       method: "POST",
       body: JSON.stringify(payload),
     }),

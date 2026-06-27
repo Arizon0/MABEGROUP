@@ -41,6 +41,24 @@ Implementado nesta etapa:
 - **Migration** Alembic `767897…` (segura em tabela já populada via
   `server_default`).
 
+## Status — Prioridade 3 (Estoque Multi-local)
+
+- **Models** (`backend/app/models/estoque.py`): `Local` (galpão, fulfillment,
+  escritório), `EstoqueSaldo` (produto × local: disponível, reservado, custo
+  médio) e `MovimentoEstoque` (razão/ledger de toda movimentação).
+- **Serviço** (`backend/app/services/estoque.py`): entrada com **custo médio
+  ponderado**, saída (com bloqueio por estoque insuficiente), **reserva/
+  liberação**, alertas (`disponível <= estoque_mínimo`), valor total do estoque
+  e ranking de SKUs mais vendidos.
+- **Integração com vendas**: a importação baixa o estoque das vendas válidas no
+  local do canal logístico (**ML Full → ML Fulfillment**, demais → galpão).
+- **API**: `GET /api/estoque` (saldo SKU × local), `/api/estoque/locais`,
+  `/api/estoque/alertas`, `/api/estoque/relatorio`, `POST /api/estoque/movimentos`.
+- **Frontend**: tela **Estoque** com valor total, alertas, ranking e saldos.
+- **Migration** Alembic `d11591…` (novas tabelas) e seed dos locais padrão.
+
+> Testes: backend **56 passed / 3 skipped**, frontend **6 passed**.
+
 ## Como rodar
 
 ### Backend

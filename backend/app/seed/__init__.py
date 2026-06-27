@@ -4,10 +4,34 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.estoque import (
+    LOCAL_ESCRITORIO,
+    LOCAL_FULFILLMENT,
+    LOCAL_GALPAO,
+    Local,
+)
 from app.models.produto import Produto
 from app.models.sku_map import SkuMap
 
 from .sku_map_seed import DE_PARA, iter_mapeamentos, nome_para
+
+LOCAIS_PADRAO = [
+    ("Galpão Central", LOCAL_GALPAO),
+    ("ML Fulfillment", LOCAL_FULFILLMENT),
+    ("Escritório", LOCAL_ESCRITORIO),
+]
+
+
+def seed_locais(db: Session) -> dict[str, int]:
+    """Cria os locais de estoque padrão (idempotente)."""
+    existentes = {l.nome for l in db.execute(select(Local)).scalars()}
+    criados = 0
+    for nome, tipo in LOCAIS_PADRAO:
+        if nome not in existentes:
+            db.add(Local(nome=nome, tipo=tipo))
+            criados += 1
+    db.commit()
+    return {"locais_criados": criados}
 
 
 def seed_sku_map(db: Session) -> dict[str, int]:
