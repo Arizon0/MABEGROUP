@@ -65,6 +65,12 @@ CANCELADOS = {
     # Reembolso ao comprador = venda revertida (descoberto em dados reais).
     "Reclamação encerrada com reembolso para o comprador",
     "Reembolsamos o valor ao comprador",
+    # Mediações e reclamações: o cliente decidiu tratar como cancelado (não dão
+    # baixa de estoque). Inclui casos em andamento e resolvidos.
+    "Mediação com devolução habilitada",
+    "Reclamação com devolução habilitada",
+    "Mediação finalizada. Te demos o dinheiro.",
+    "Liberamos o valor do produto que devolveram para você",
 }
 
 # Qualquer estado iniciado por "Devolução" é uma devolução. O ML tem dezenas de

@@ -22,6 +22,11 @@ CANCELADOS_REAIS = [
     # Reembolso ao comprador = venda revertida.
     "Reclamação encerrada com reembolso para o comprador",
     "Reembolsamos o valor ao comprador",
+    # Mediações/reclamações: decisão do cliente = tratar como cancelado.
+    "Mediação com devolução habilitada",
+    "Reclamação com devolução habilitada",
+    "Mediação finalizada. Te demos o dinheiro.",
+    "Liberamos o valor do produto que devolveram para você",
 ]
 
 DEVOLUCOES_REAIS = [
@@ -40,8 +45,7 @@ DEVOLUCOES_REAIS = [
     "Em devolução",
 ]
 
-# Estados que permanecem válidos: vendas em andamento e mediações/reclamações
-# resolvidas a favor do vendedor (o dinheiro ficou com a loja).
+# Estados que permanecem válidos: vendas concluídas ou em andamento de envio.
 VALIDOS_REAIS = [
     "Entregue",
     "Venda entregue",
@@ -52,10 +56,6 @@ VALIDOS_REAIS = [
     "Para enviar no dia 7 de julho",
     "Chega entre os dias 29 jun e 1 jul",
     "Pacote de 2 produtos",
-    "Mediação finalizada. Te demos o dinheiro.",
-    "Liberamos o valor do produto que devolveram para você",
-    "Mediação com devolução habilitada",
-    "Reclamação com devolução habilitada",
 ]
 
 
