@@ -7,10 +7,12 @@ from .financeiro import ContaPagar, ContaReceber
 from .fornecedor import ContatoFornecedor, Fornecedor
 from .produto import Produto
 from .sku_map import SkuMap, SkuPendencia
+from .usuario import Usuario
 from .venda import Venda
 
 __all__ = [
     "Base",
+    "Usuario",
     "Produto",
     "Fornecedor",
     "ContatoFornecedor",

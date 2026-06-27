@@ -1,3 +1,5 @@
+import { getToken, logout, setSession } from "../auth";
+import type { AuthUser } from "../auth";
 import type {
   Fornecedor,
   FornecedorCreate,
@@ -42,11 +44,25 @@ import type {
 
 const BASE = import.meta.env.VITE_API_URL ?? "";
 
+function authHeaders(): Record<string, string> {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+      ...(init?.headers as Record<string, string> | undefined),
+    },
   });
+  if (resp.status === 401) {
+    // Token ausente/expirado: encerra a sessão e volta para o login.
+    logout();
+    throw new Error("Sessão expirada. Faça login novamente.");
+  }
   if (!resp.ok) {
     const detail = await resp.text().catch(() => resp.statusText);
     throw new Error(`HTTP ${resp.status}: ${detail}`);
@@ -54,7 +70,37 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await resp.json()) as T;
 }
 
+interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  usuario: AuthUser;
+}
+
 export const api = {
+  // ---- Autenticação ----
+  /** Faz login, grava o token/usuário na sessão e retorna o usuário.
+   *  Usa fetch direto (não o request genérico) para tratar 401 como
+   *  "credenciais inválidas" em vez de "sessão expirada". */
+  login: async (email: string, senha: string): Promise<AuthUser> => {
+    const resp = await fetch(`${BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, senha }),
+    });
+    if (resp.status === 401) {
+      throw new Error("E-mail ou senha incorretos");
+    }
+    if (!resp.ok) {
+      const detail = await resp.text().catch(() => resp.statusText);
+      throw new Error(`HTTP ${resp.status}: ${detail}`);
+    }
+    const data = (await resp.json()) as LoginResponse;
+    setSession(data.access_token, data.usuario);
+    return data.usuario;
+  },
+
+  logout: () => logout(),
+
   // ---- SKU Map ----
   listarSkuMap: (canal?: string) =>
     request<SkuMap[]>(`/api/sku-map${canal ? `?canal=${encodeURIComponent(canal)}` : ""}`),

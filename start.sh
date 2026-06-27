@@ -45,17 +45,18 @@ echo "→ Carregando seed (somente se o banco estiver vazio)…"
 python - <<'PYEOF'
 from app.database import SessionLocal
 from app.models.estoque import Local
-from app.seed import seed_locais, seed_sku_map
+from app.seed import seed_admin, seed_locais, seed_sku_map
 
 db = SessionLocal()
 try:
+    seed_admin(db)  # idempotente: cria o usuário admin se ainda não existir
     if db.query(Local).count() == 0:
         seed_locais(db)
         seed_sku_map(db)
         db.commit()
-        print("  ✓ seed aplicado (3 locais + de-para de SKUs + 20 produtos).")
+        print("  ✓ seed aplicado (admin + 3 locais + de-para de SKUs + 20 produtos).")
     else:
-        print("  • banco já populado — seed ignorado.")
+        print("  • dados já populados — seed de catálogo ignorado (admin garantido).")
 finally:
     db.close()
 PYEOF

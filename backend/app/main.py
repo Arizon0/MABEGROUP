@@ -1,11 +1,12 @@
 """Aplicação FastAPI do ERP Multicanal."""
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import CORS_ORIGINS
 from app.routers import (
+    auth,
     compras,
     dashboard,
     estoque,
@@ -16,6 +17,7 @@ from app.routers import (
     relatorios,
     sku_map,
 )
+from app.services.auth import get_current_user
 
 app = FastAPI(title="ERP Multicanal — Marketplace", version="0.1.0")
 
@@ -27,15 +29,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(importar.router)
-app.include_router(sku_map.router)
-app.include_router(produtos.router)
-app.include_router(fornecedores.router)
-app.include_router(estoque.router)
-app.include_router(compras.router)
-app.include_router(dashboard.router)
-app.include_router(financeiro.router)
-app.include_router(relatorios.router)
+# Rotas abertas (sem token): login.
+app.include_router(auth.router)
+
+# Rotas de negócio: exigem usuário autenticado (JWT no header Authorization).
+_protegido = [Depends(get_current_user)]
+app.include_router(importar.router, dependencies=_protegido)
+app.include_router(sku_map.router, dependencies=_protegido)
+app.include_router(produtos.router, dependencies=_protegido)
+app.include_router(fornecedores.router, dependencies=_protegido)
+app.include_router(estoque.router, dependencies=_protegido)
+app.include_router(compras.router, dependencies=_protegido)
+app.include_router(dashboard.router, dependencies=_protegido)
+app.include_router(financeiro.router, dependencies=_protegido)
+app.include_router(relatorios.router, dependencies=_protegido)
 
 
 @app.get("/health", tags=["infra"])

@@ -4,6 +4,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import ADMIN_EMAIL, ADMIN_NOME, ADMIN_SENHA
 from app.models.estoque import (
     LOCAL_ESCRITORIO,
     LOCAL_FULFILLMENT,
@@ -12,6 +13,8 @@ from app.models.estoque import (
 )
 from app.models.produto import Produto
 from app.models.sku_map import SkuMap
+from app.models.usuario import Usuario
+from app.services.auth import hash_senha
 
 from .sku_map_seed import DE_PARA, iter_mapeamentos, nome_para
 
@@ -20,6 +23,30 @@ LOCAIS_PADRAO = [
     ("ML Fulfillment", LOCAL_FULFILLMENT),
     ("Escritório", LOCAL_ESCRITORIO),
 ]
+
+
+def seed_admin(db: Session) -> dict[str, int]:
+    """Cria o usuário administrador inicial (idempotente).
+
+    Credenciais vêm de ADMIN_EMAIL/ADMIN_SENHA (variáveis de ambiente).
+    """
+    email = ADMIN_EMAIL.strip().lower()
+    existe = db.execute(
+        select(Usuario).where(Usuario.email == email)
+    ).scalar_one_or_none()
+    if existe is not None:
+        return {"usuarios_criados": 0}
+    db.add(
+        Usuario(
+            email=email,
+            nome=ADMIN_NOME,
+            senha_hash=hash_senha(ADMIN_SENHA),
+            perfil="admin",
+            ativo=True,
+        )
+    )
+    db.commit()
+    return {"usuarios_criados": 1}
 
 
 def seed_locais(db: Session) -> dict[str, int]:
