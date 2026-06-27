@@ -59,6 +59,24 @@ Implementado nesta etapa:
 
 > Testes: backend **56 passed / 3 skipped**, frontend **6 passed**.
 
+## Status — Prioridade 4 (Pedidos de Compra)
+
+- **Models** (`backend/app/models/compra.py`, `financeiro.py`): `PedidoCompra`
+  + `ItemPedidoCompra` (fluxo rascunho → aprovado → recebido) e `ContaPagar`.
+- **Serviço** (`backend/app/services/compras.py`):
+  - criar pedido (rascunho), **aprovar** (gera lançamento em `contas_a_pagar`
+    com vencimento = hoje + prazo do fornecedor),
+  - **receber** (incrementa estoque com custo médio ponderado),
+  - **sugestão automática** de quantidade a repor por SKU:
+    `media_mensal + estoque_mínimo + qtd_pendente − qtd_atual` (repor quando > 0).
+- **API**: `GET/POST /api/compras`, `/api/compras/sugestao`,
+  `POST /api/compras/{id}/aprovar`, `/receber`, `/anexos` (NF de entrada).
+- **Frontend**: tela **Compras** com sugestão de reposição (destaque em vermelho),
+  formulário de pedido e ações aprovar/receber.
+- **Migration** Alembic `88a346…` (novas tabelas).
+
+> Testes: backend **64 passed / 3 skipped**, frontend **8 passed**.
+
 ## Como rodar
 
 ### Backend

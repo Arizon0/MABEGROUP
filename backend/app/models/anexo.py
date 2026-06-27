@@ -14,6 +14,7 @@ from .base import Base
 
 OWNER_PRODUTO = "produto"
 OWNER_FORNECEDOR = "fornecedor"
+OWNER_PEDIDO_COMPRA = "pedido_compra"
 MAX_ANEXOS = 5
 
 

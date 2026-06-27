@@ -5,6 +5,11 @@ import type {
   ProdutoCreate,
 } from "../types/cadastro";
 import type {
+  PedidoCompra,
+  PedidoCompraCreate,
+  SugestaoCompra,
+} from "../types/compra";
+import type {
   Local,
   MovimentoIn,
   RelatorioEstoque,
@@ -88,5 +93,28 @@ export const api = {
     request<unknown>(`/api/estoque/movimentos`, {
       method: "POST",
       body: JSON.stringify(payload),
+    }),
+
+  // ---- Compras ----
+  listarCompras: (status?: string) =>
+    request<PedidoCompra[]>(
+      `/api/compras${status ? `?status=${encodeURIComponent(status)}` : ""}`,
+    ),
+
+  sugestaoCompra: () => request<SugestaoCompra[]>(`/api/compras/sugestao`),
+
+  criarCompra: (payload: PedidoCompraCreate) =>
+    request<PedidoCompra>(`/api/compras`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  aprovarCompra: (id: number) =>
+    request<PedidoCompra>(`/api/compras/${id}/aprovar`, { method: "POST" }),
+
+  receberCompra: (id: number) =>
+    request<PedidoCompra>(`/api/compras/${id}/receber`, {
+      method: "POST",
+      body: JSON.stringify({}),
     }),
 };

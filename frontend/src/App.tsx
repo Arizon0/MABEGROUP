@@ -1,4 +1,5 @@
 import { Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { ComprasPage } from "./pages/ComprasPage";
 import { EstoquePage } from "./pages/EstoquePage";
 import { FornecedoresPage } from "./pages/FornecedoresPage";
 import { ProdutosPage } from "./pages/ProdutosPage";
@@ -28,6 +29,7 @@ export default function App() {
         <NavItem to="/produtos" label="Produtos" />
         <NavItem to="/fornecedores" label="Fornecedores" />
         <NavItem to="/estoque" label="Estoque" />
+        <NavItem to="/compras" label="Compras" />
       </nav>
       <Routes>
         <Route path="/" element={<Navigate to="/sku-map" replace />} />
@@ -35,6 +37,7 @@ export default function App() {
         <Route path="/produtos" element={<ProdutosPage />} />
         <Route path="/fornecedores" element={<FornecedoresPage />} />
         <Route path="/estoque" element={<EstoquePage />} />
+        <Route path="/compras" element={<ComprasPage />} />
       </Routes>
     </div>
   );

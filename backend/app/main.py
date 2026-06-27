@@ -5,7 +5,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import CORS_ORIGINS
-from app.routers import estoque, fornecedores, importar, produtos, sku_map
+from app.routers import (
+    compras,
+    estoque,
+    fornecedores,
+    importar,
+    produtos,
+    sku_map,
+)
 
 app = FastAPI(title="ERP Multicanal — Marketplace", version="0.1.0")
 
@@ -22,6 +29,7 @@ app.include_router(sku_map.router)
 app.include_router(produtos.router)
 app.include_router(fornecedores.router)
 app.include_router(estoque.router)
+app.include_router(compras.router)
 
 
 @app.get("/health", tags=["infra"])
