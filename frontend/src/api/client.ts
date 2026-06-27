@@ -10,11 +10,29 @@ import type {
   SugestaoCompra,
 } from "../types/compra";
 import type {
+  Dashboard,
+  ResumoFinanceiro,
+  TipoRelatorio,
+} from "../types/dashboard";
+import type {
   Local,
   MovimentoIn,
   RelatorioEstoque,
   Saldo,
 } from "../types/estoque";
+
+export interface FiltroRelatorio {
+  data_inicio?: string;
+  data_fim?: string;
+  canal?: string;
+  [key: string]: string | undefined;
+}
+
+function qs(params: Record<string, string | undefined>): string {
+  const entries = Object.entries(params).filter(([, v]) => v);
+  if (entries.length === 0) return "";
+  return "?" + entries.map(([k, v]) => `${k}=${encodeURIComponent(v as string)}`).join("&");
+}
 import type {
   Produto,
   SkuMap,
@@ -117,4 +135,18 @@ export const api = {
       method: "POST",
       body: JSON.stringify({}),
     }),
+
+  // ---- Dashboard / Financeiro / Relatórios ----
+  getDashboard: (f: FiltroRelatorio = {}) =>
+    request<Dashboard>(`/api/dashboard${qs(f)}`),
+
+  getFinanceiro: (f: FiltroRelatorio = {}) =>
+    request<ResumoFinanceiro>(`/api/financeiro${qs(f)}`),
+
+  getRelatorio: <T>(tipo: TipoRelatorio, f: FiltroRelatorio = {}) =>
+    request<T>(`/api/relatorios/${tipo}${qs(f)}`),
+
+  /** URL de download do relatório (Excel/PDF) — usada em links <a>. */
+  urlRelatorio: (tipo: TipoRelatorio, formato: "excel" | "pdf", f: FiltroRelatorio = {}) =>
+    `${BASE}/api/relatorios/${tipo}${qs({ ...f, formato })}`,
 };

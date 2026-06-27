@@ -11,6 +11,7 @@ from app.models.produto import Produto
 from app.models.venda import Venda
 from app.parsers.common import STATUS_VALIDO, VendaDTO
 from app.services.estoque import baixar_estoque_venda
+from app.services.financeiro import gerar_contas_receber
 from app.services.sku_resolver import SkuResolver
 from app.services.totais import Totais, calcular_totais
 
@@ -25,6 +26,7 @@ class ResultadoImportacao:
     skus_pendentes: int           # sku_canal distintos sem de-para
     totais: Totais
     baixas_estoque: int = 0       # linhas que geraram baixa de estoque
+    contas_receber: int = 0       # recebíveis lançados
 
     def as_dict(self) -> dict:
         return {
@@ -35,12 +37,18 @@ class ResultadoImportacao:
             "skus_resolvidos": self.skus_resolvidos,
             "skus_pendentes": self.skus_pendentes,
             "baixas_estoque": self.baixas_estoque,
+            "contas_receber": self.contas_receber,
             "totais": self.totais.as_dict(),
         }
 
 
 def importar_vendas(
-    db: Session, vendas: list[VendaDTO], canal: str, *, baixar_estoque: bool = False
+    db: Session,
+    vendas: list[VendaDTO],
+    canal: str,
+    *,
+    baixar_estoque: bool = False,
+    gerar_financeiro: bool = False,
 ) -> ResultadoImportacao:
     """Persiste a lista de vendas de um canal.
 
@@ -48,6 +56,7 @@ def importar_vendas(
     - Ignora pedidos já importados (mesmo canal + id_pedido_canal) — regra 6.
     - Quando ``baixar_estoque`` é True, baixa o estoque das vendas válidas no
       local correspondente ao canal logístico (ML Full -> Fulfillment).
+    - Quando ``gerar_financeiro`` é True, lança um recebível por venda válida.
     - Retorna totais agregados do arquivo (independente de duplicidade).
     """
     resolver = SkuResolver(db)
@@ -70,6 +79,7 @@ def importar_vendas(
     inseridas = 0
     baixas = 0
     pedidos_duplicados_ids: set[str] = set()
+    inseridas_models: list[Venda] = []
 
     for dto in vendas:
         dto.sku_base = resolver.resolver(
@@ -85,7 +95,9 @@ def importar_vendas(
             pedidos_duplicados_ids.add(dto.id_pedido_canal)
             continue
 
-        db.add(_dto_to_model(dto))
+        modelo = _dto_to_model(dto)
+        db.add(modelo)
+        inseridas_models.append(modelo)
         inseridas += 1
 
         if (
@@ -106,6 +118,8 @@ def importar_vendas(
 
     db.flush()
 
+    contas = gerar_contas_receber(db, inseridas_models) if gerar_financeiro else 0
+
     return ResultadoImportacao(
         canal=canal,
         linhas_arquivo=len(vendas),
@@ -115,6 +129,7 @@ def importar_vendas(
         skus_pendentes=len(resolver.pendencias),
         totais=calcular_totais(vendas),
         baixas_estoque=baixas,
+        contas_receber=contas,
     )
 
 

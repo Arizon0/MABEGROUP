@@ -13,6 +13,7 @@ from .base import Base
 
 CONTA_ABERTA = "aberto"
 CONTA_PAGA = "pago"
+CONTA_RECEBIDA = "recebido"
 
 
 class ContaPagar(Base):
@@ -35,3 +36,21 @@ class ContaPagar(Base):
     pago_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     fornecedor: Mapped["Fornecedor | None"] = relationship()  # noqa: F821
+
+
+class ContaReceber(Base):
+    """Recebível gerado a cada venda importada (líquido a receber do canal)."""
+
+    __tablename__ = "contas_a_receber"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    canal: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    id_pedido_canal: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    descricao: Mapped[str] = mapped_column(String(255), nullable=False)
+    valor: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    competencia: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default=CONTA_ABERTA)
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    recebido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

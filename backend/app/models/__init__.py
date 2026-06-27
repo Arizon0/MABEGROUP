@@ -3,7 +3,7 @@ from .anexo import Anexo
 from .base import Base
 from .compra import ItemPedidoCompra, PedidoCompra
 from .estoque import EstoqueSaldo, Local, MovimentoEstoque
-from .financeiro import ContaPagar
+from .financeiro import ContaPagar, ContaReceber
 from .fornecedor import ContatoFornecedor, Fornecedor
 from .produto import Produto
 from .sku_map import SkuMap, SkuPendencia
@@ -21,6 +21,7 @@ __all__ = [
     "PedidoCompra",
     "ItemPedidoCompra",
     "ContaPagar",
+    "ContaReceber",
     "SkuMap",
     "SkuPendencia",
     "Venda",

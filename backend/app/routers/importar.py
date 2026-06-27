@@ -35,7 +35,9 @@ def importar_ml(arquivo: UploadFile = File(...), db: Session = Depends(get_db)):
     finally:
         caminho.unlink(missing_ok=True)
 
-    resultado = importar_vendas(db, vendas, CANAL_ML, baixar_estoque=True)
+    resultado = importar_vendas(
+        db, vendas, CANAL_ML, baixar_estoque=True, gerar_financeiro=True
+    )
     db.commit()
     return resultado.as_dict()
 
@@ -51,6 +53,8 @@ def importar_shopee(arquivo: UploadFile = File(...), db: Session = Depends(get_d
     finally:
         caminho.unlink(missing_ok=True)
 
-    resultado = importar_vendas(db, vendas, CANAL_SHOPEE, baixar_estoque=True)
+    resultado = importar_vendas(
+        db, vendas, CANAL_SHOPEE, baixar_estoque=True, gerar_financeiro=True
+    )
     db.commit()
     return resultado.as_dict()

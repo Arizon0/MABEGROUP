@@ -77,6 +77,34 @@ Implementado nesta etapa:
 
 > Testes: backend **64 passed / 3 skipped**, frontend **8 passed**.
 
+## Status — Prioridade 5 (Financeiro e Dashboards)
+
+- **Contas a receber** (`backend/app/models/financeiro.py`): lançadas
+  automaticamente a cada importação de venda (a pagar já vinha da aprovação de
+  compra).
+- **Dashboard** (`GET /api/dashboard`): faturamento bruto, líquido por canal,
+  lucro estimado (líquido − CMV − custos operacionais) e projeções 15/30/60/90
+  dias (média móvel).
+- **Financeiro** (`GET /api/financeiro` + `/contas-pagar`, `/contas-receber`):
+  resumo de contas a pagar/receber e saldo projetado, com filtro de período/canal.
+- **Relatórios** (`GET /api/relatorios/{tipo}`): **DRE** simplificado, **ranking**
+  de SKUs por receita líquida, **giro** de estoque e **fluxo de caixa** mensal —
+  todos com filtro de período + canal e exportáveis em **Excel e PDF**.
+- **Frontend**: telas **Dashboard** (home), **Financeiro** e **Relatórios** (com
+  filtros e download Excel/PDF).
+- **Migration** Alembic `5433…` (contas_a_receber).
+
+> Testes: backend **80 passed / 3 skipped**, frontend **9 passed**.
+
+---
+
+### Roadmap concluído
+
+Prioridades 1 → 5 implementadas (parsers + SKU Map, cadastros, estoque,
+compras, financeiro/dashboards). **36 endpoints** REST, **5 migrations** Alembic,
+**8 telas** React. Os 3 testes "skipped" rodam automaticamente quando as
+planilhas reais são disponibilizadas, validando os totais oficiais.
+
 ## Como rodar
 
 ### Backend
