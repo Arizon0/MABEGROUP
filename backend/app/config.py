@@ -5,10 +5,17 @@ import os
 
 # PostgreSQL em produção; SQLite como padrão de desenvolvimento/teste para
 # permitir rodar sem um servidor de banco configurado.
-DATABASE_URL: str = os.getenv(
-    "DATABASE_URL",
-    "sqlite:///./erp.db",
+# A integração Supabase↔Vercel injeta a URL como POSTGRES_URL — lemos os dois.
+DATABASE_URL: str = (
+    os.getenv("DATABASE_URL")
+    or os.getenv("POSTGRES_URL")
+    or "sqlite:///./erp.db"
 )
+
+# Supabase/Heroku/Vercel costumam fornecer a URL como "postgres://", mas o
+# SQLAlchemy 2.x exige o driver explícito "postgresql://".
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = "postgresql://" + DATABASE_URL[len("postgres://") :]
 
 # Origens permitidas para o frontend (CORS).
 CORS_ORIGINS: list[str] = os.getenv(
