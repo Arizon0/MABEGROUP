@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+*.db
+erp.db
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Planilhas reais (dados sensíveis) — não versionar
+backend/tests/data/*.xlsx
+
+# Anexos enviados (uploads de produtos/fornecedores)
+backend/uploads/
+uploads/
+
+# Ambiente
+.env
+.env.local
+
+# Editores / SO
+.DS_Store
+.idea/
+.vscode/
