@@ -22,10 +22,13 @@ from app.services.auth import get_current_user
 
 app = FastAPI(title="ERP Multicanal — Marketplace", version="0.1.0")
 
+# Com "*" não é permitido allow_credentials=True; como usamos Bearer token
+# (não cookies), desligar credentials é seguro e libera qualquer origem.
+_libera_tudo = "*" in CORS_ORIGINS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"] if _libera_tudo else CORS_ORIGINS,
+    allow_credentials=not _libera_tudo,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -33,11 +33,10 @@ DATABASE_URL: str = _normalizar_db_url(
     os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL") or "sqlite:///./erp.db"
 )
 
-# Origens permitidas para o frontend (CORS).
-CORS_ORIGINS: list[str] = os.getenv(
-    "CORS_ORIGINS",
-    "http://localhost:5173,http://localhost:3000",
-).split(",")
+# Origens permitidas para o frontend (CORS). Padrão "*" porque a autenticação é
+# por Bearer token (header), não por cookie — então não precisamos de credentials
+# e o backend fica agnóstico à URL do frontend (evita reconfigurar a cada deploy).
+CORS_ORIGINS: list[str] = os.getenv("CORS_ORIGINS", "*").split(",")
 
 # Diretório onde os anexos (até 5 por produto/fornecedor) são gravados.
 UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./uploads")

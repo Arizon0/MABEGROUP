@@ -18,10 +18,15 @@ from app.seed import seed_admin, seed_locais, seed_sku_map
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
-@router.post("/setup")
-def setup(x_setup_token: str = Header(default="")):
-    """Cria o schema, ativa RLS e roda o seed. Requer o header X-Setup-Token."""
-    if not SETUP_TOKEN or x_setup_token != SETUP_TOKEN:
+@router.api_route("/setup", methods=["GET", "POST"])
+def setup(token: str = "", x_setup_token: str = Header(default="")):
+    """Cria o schema, ativa RLS e roda o seed.
+
+    Aceita o token pelo query param ``?token=`` (para abrir no navegador) ou pelo
+    header ``X-Setup-Token``. Idempotente.
+    """
+    fornecido = token or x_setup_token
+    if not SETUP_TOKEN or fornecido != SETUP_TOKEN:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Token de setup inválido")
 
     # 1) Cria as tabelas que ainda não existirem (idempotente).
