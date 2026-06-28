@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import CORS_ORIGINS
 from app.routers import (
+    admin,
     auth,
     compras,
     dashboard,
@@ -29,8 +30,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Rotas abertas (sem token): login.
+# Rotas abertas (sem token): login e setup inicial (protegido por SETUP_TOKEN).
 app.include_router(auth.router)
+app.include_router(admin.router)
 
 # Rotas de negócio: exigem usuário autenticado (JWT no header Authorization).
 _protegido = [Depends(get_current_user)]
