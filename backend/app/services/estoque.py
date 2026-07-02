@@ -202,6 +202,65 @@ def baixar_estoque_venda(
     )
 
 
+class BaixaEstoqueBatch:
+    """Baixa de estoque em lote para importação de planilhas.
+
+    Carrega locais e saldos **uma única vez** em memória e acumula os
+    movimentos, evitando uma query + flush por linha (que inviabilizava a
+    importação de milhares de linhas em ambiente serverless). Chame ``baixar``
+    por venda válida e faça um ``db.flush()`` único ao final da importação.
+    """
+
+    def __init__(self, db: Session) -> None:
+        self.db = db
+        self._ful = db.execute(
+            select(Local).where(Local.tipo == LOCAL_FULFILLMENT).order_by(Local.id)
+        ).scalars().first()
+        self._galpao = db.execute(
+            select(Local).where(Local.tipo == "galpao").order_by(Local.id)
+        ).scalars().first()
+        self._saldos: dict[tuple[int, int], EstoqueSaldo] = {
+            (s.produto_id, s.local_id): s
+            for s in db.execute(select(EstoqueSaldo)).scalars()
+        }
+
+    def _local_para(self, canal_logistico: str) -> Local | None:
+        if "Full" in (canal_logistico or "") and self._ful is not None:
+            return self._ful
+        return self._galpao
+
+    def baixar(
+        self, *, produto_id: int, canal_logistico: str, qtd: Decimal,
+        referencia: str | None = None,
+    ) -> bool:
+        """Registra a saída em memória. Retorna True se houve baixa."""
+        local = self._local_para(canal_logistico)
+        if local is None:
+            return False
+        qtd = _d(qtd)
+        if qtd <= 0:
+            return False
+
+        chave = (produto_id, local.id)
+        saldo = self._saldos.get(chave)
+        if saldo is None:
+            saldo = EstoqueSaldo(
+                produto_id=produto_id, local_id=local.id,
+                qtd_disponivel=ZERO, qtd_reservada=ZERO, custo_medio=ZERO,
+            )
+            self.db.add(saldo)
+            self._saldos[chave] = saldo
+        saldo.qtd_disponivel = _d(saldo.qtd_disponivel) - qtd
+
+        self.db.add(
+            MovimentoEstoque(
+                produto_id=produto_id, local_id=local.id, tipo=MOV_SAIDA,
+                qtd=qtd, origem="importacao", referencia=referencia,
+            )
+        )
+        return True
+
+
 # --------------------------------------------------------------------------- #
 # Relatórios                                                                     #
 # --------------------------------------------------------------------------- #

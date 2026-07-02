@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.models.produto import Produto
 from app.models.venda import Venda
 from app.parsers.common import STATUS_VALIDO, VendaDTO
-from app.services.estoque import baixar_estoque_venda
+from app.services.estoque import BaixaEstoqueBatch
 from app.services.financeiro import gerar_contas_receber
 from app.services.sku_resolver import SkuResolver
 from app.services.totais import Totais, calcular_totais
@@ -68,12 +68,14 @@ def importar_vendas(
         ).scalars()
     )
 
-    # Mapa sku_base -> produto_id (só carregado quando vai baixar estoque).
+    # Mapa sku_base -> produto_id e batch de baixa (carregados uma vez).
     produto_por_sku: dict[str, int] = {}
+    baixa_batch: BaixaEstoqueBatch | None = None
     if baixar_estoque:
         produto_por_sku = {
             p.sku_base: p.id for p in db.execute(select(Produto)).scalars()
         }
+        baixa_batch = BaixaEstoqueBatch(db)
 
     skus_resolvidos = 0
     inseridas = 0
@@ -101,19 +103,17 @@ def importar_vendas(
         inseridas += 1
 
         if (
-            baixar_estoque
+            baixa_batch is not None
             and dto.status_erp == STATUS_VALIDO
             and dto.sku_base in produto_por_sku
             and dto.qtd > 0
         ):
-            baixou = baixar_estoque_venda(
-                db,
+            if baixa_batch.baixar(
                 produto_id=produto_por_sku[dto.sku_base],
                 canal_logistico=dto.canal_logistico,
                 qtd=dto.qtd,
                 referencia=f"{canal}:{dto.id_pedido_canal}",
-            )
-            if baixou is not None:
+            ):
                 baixas += 1
 
     db.flush()
