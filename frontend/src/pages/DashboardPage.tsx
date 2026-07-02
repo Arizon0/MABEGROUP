@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
-import type { Dashboard } from "../types/dashboard";
+import type { Dashboard, DRE, RankingReceita } from "../types/dashboard";
 
 function brl(v: string): string {
   const n = Number(v);
@@ -11,13 +11,22 @@ function brl(v: string): string {
 
 export function DashboardPage() {
   const [data, setData] = useState<Dashboard | null>(null);
+  const [dre, setDre] = useState<DRE | null>(null);
+  const [ranking, setRanking] = useState<RankingReceita[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        setData(await api.getDashboard());
+        const [d, dreRes, rank] = await Promise.all([
+          api.getDashboard(),
+          api.getRelatorio<DRE>("dre"),
+          api.getRelatorio<RankingReceita[]>("ranking"),
+        ]);
+        setData(d);
+        setDre(dreRes);
+        setRanking(rank.slice(0, 10));
       } catch (e) {
         setErro(e instanceof Error ? e.message : "Erro ao carregar dashboard");
       } finally {
@@ -26,8 +35,11 @@ export function DashboardPage() {
     })();
   }, []);
 
+  const semDados =
+    data && Number(data.faturamento_bruto) === 0 && Number(data.unidades_vendidas) === 0;
+
   return (
-    <div className="mx-auto max-w-5xl p-6">
+    <div className="mx-auto max-w-6xl p-6">
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-sm text-gray-500">Visão geral do desempenho multicanal.</p>
@@ -41,6 +53,20 @@ export function DashboardPage() {
 
       {carregando ? (
         <p className="text-gray-500">Carregando...</p>
+      ) : semDados ? (
+        <div className="rounded-lg border border-dashed border-gray-300 bg-white p-10 text-center">
+          <p className="text-lg font-semibold text-gray-700">Nenhuma venda importada ainda</p>
+          <p className="mt-1 text-sm text-gray-500">
+            Vá em <span className="font-semibold text-blue-600">Importar</span> e suba as
+            planilhas do Mercado Livre e da Shopee para ver os números aqui.
+          </p>
+          <a
+            href="/importar"
+            className="mt-4 inline-block rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Importar planilhas
+          </a>
+        </div>
       ) : data ? (
         <>
           <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
@@ -54,11 +80,8 @@ export function DashboardPage() {
             <Kpi titulo="Unidades vendidas" valor={data.unidades_vendidas} />
           </div>
 
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="rounded border border-gray-200 bg-white p-4">
-              <h2 className="mb-3 text-sm font-semibold uppercase text-gray-500">
-                Líquido por canal
-              </h2>
+          <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <Painel titulo="Líquido por canal">
               <ul className="space-y-2">
                 {Object.entries(data.liquido_por_canal).map(([canal, valor]) => (
                   <li key={canal} className="flex justify-between text-sm">
@@ -67,12 +90,9 @@ export function DashboardPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </Painel>
 
-            <div className="rounded border border-gray-200 bg-white p-4">
-              <h2 className="mb-3 text-sm font-semibold uppercase text-gray-500">
-                Projeção de líquido
-              </h2>
+            <Painel titulo="Projeção de líquido">
               <ul className="space-y-2">
                 {Object.entries(data.projecoes).map(([dias, valor]) => (
                   <li key={dias} className="flex justify-between text-sm">
@@ -81,10 +101,62 @@ export function DashboardPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </Painel>
+
+            {dre && (
+              <Painel titulo="DRE — resultado">
+                <ul className="space-y-1.5 text-sm">
+                  <DreLinha rotulo="Receita bruta" valor={dre.receita_bruta} />
+                  <DreLinha rotulo="Tarifas" valor={dre.tarifas_plataforma} negativo />
+                  <DreLinha rotulo="Frete líquido" valor={dre.frete_liquido} negativo />
+                  <DreLinha rotulo="Custo produtos" valor={dre.custo_produtos_vendidos} negativo />
+                  <li className="mt-1 flex justify-between border-t border-gray-100 pt-1.5">
+                    <span className="font-semibold text-gray-700">Margem bruta</span>
+                    <span
+                      className={`font-bold ${
+                        Number(dre.margem_bruta) >= 0 ? "text-green-700" : "text-red-600"
+                      }`}
+                    >
+                      {brl(dre.margem_bruta)}
+                    </span>
+                  </li>
+                </ul>
+              </Painel>
+            )}
           </div>
 
-          <div className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-600">
+          {ranking.length > 0 && (
+            <Painel titulo="Top 10 produtos por líquido recebido">
+              <div className="overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="text-left text-xs uppercase text-gray-400">
+                    <tr>
+                      <th className="pb-2">#</th>
+                      <th className="pb-2">SKU</th>
+                      <th className="pb-2 text-right">Unidades</th>
+                      <th className="pb-2 text-right">Líquido</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {ranking.map((r, i) => (
+                      <tr key={r.sku_base}>
+                        <td className="py-1.5 text-gray-400">{i + 1}</td>
+                        <td className="py-1.5 font-medium text-gray-900">{r.sku_base}</td>
+                        <td className="py-1.5 text-right text-gray-700">
+                          {Number(r.unidades).toLocaleString("pt-BR")}
+                        </td>
+                        <td className="py-1.5 text-right font-semibold text-gray-900">
+                          {brl(r.liquido)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Painel>
+          )}
+
+          <div className="mt-6 rounded border border-gray-200 bg-white p-4 text-sm text-gray-600">
             <span className="font-medium">Custo dos produtos vendidos:</span>{" "}
             {brl(data.custo_produtos_vendidos)} ·{" "}
             <span className="font-medium">Custos operacionais:</span>{" "}
@@ -102,5 +174,23 @@ function Kpi({ titulo, valor, cor = "text-gray-900" }: { titulo: string; valor: 
       <div className="mb-1 text-xs font-medium uppercase text-gray-500">{titulo}</div>
       <div className={`text-xl font-bold ${cor}`}>{valor}</div>
     </div>
+  );
+}
+
+function Painel({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded border border-gray-200 bg-white p-4">
+      <h2 className="mb-3 text-sm font-semibold uppercase text-gray-500">{titulo}</h2>
+      {children}
+    </div>
+  );
+}
+
+function DreLinha({ rotulo, valor, negativo = false }: { rotulo: string; valor: string; negativo?: boolean }) {
+  return (
+    <li className="flex justify-between">
+      <span className="text-gray-600">{rotulo}</span>
+      <span className={negativo ? "text-red-600" : "text-gray-900"}>{brl(valor)}</span>
+    </li>
   );
 }

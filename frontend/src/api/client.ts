@@ -20,6 +20,7 @@ import type {
   RelatorioEstoque,
   Saldo,
 } from "../types/estoque";
+import type { ResultadoImportacao } from "../types/importacao";
 import type {
   Produto,
   SkuMap,
@@ -57,7 +58,25 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await resp.json()) as T;
 }
 
+async function upload<T>(path: string, arquivo: File): Promise<T> {
+  const form = new FormData();
+  form.append("arquivo", arquivo);
+  const resp = await fetch(`${BASE}${path}`, { method: "POST", body: form });
+  if (!resp.ok) {
+    const detail = await resp.text().catch(() => resp.statusText);
+    throw new Error(`HTTP ${resp.status}: ${detail}`);
+  }
+  return (await resp.json()) as T;
+}
+
 export const api = {
+  // ---- Importação de planilhas ----
+  importarML: (arquivo: File) =>
+    upload<ResultadoImportacao>(`/api/importar/ml`, arquivo),
+
+  importarShopee: (arquivo: File) =>
+    upload<ResultadoImportacao>(`/api/importar/shopee`, arquivo),
+
   // ---- SKU Map ----
   listarSkuMap: (canal?: string) =>
     request<SkuMap[]>(`/api/sku-map${canal ? `?canal=${encodeURIComponent(canal)}` : ""}`),
