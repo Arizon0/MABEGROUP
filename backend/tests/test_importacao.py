@@ -5,10 +5,11 @@ from decimal import Decimal
 
 from sqlalchemy import func, select
 
+from app.models.estoque import EstoqueSaldo, MovimentoEstoque
 from app.models.sku_map import SkuPendencia
 from app.models.venda import Venda
 from app.parsers.mercadolivre import parse_ml
-from app.seed import seed_sku_map
+from app.seed import seed_locais, seed_sku_map
 from app.services.importacao import importar_vendas
 from app.parsers.common import CANAL_ML
 from tests.factories import build_ml_xlsx
@@ -90,3 +91,33 @@ def test_totais_da_importacao(db, tmp_path):
     resultado = importar_vendas(db, parse_ml(path), CANAL_ML)
     assert resultado.totais.liquido_recebido == esperado["liquido_recebido"]
     assert resultado.totais.unidades == esperado["unidades"]
+
+
+def test_baixa_estoque_em_lote(db, tmp_path):
+    """A baixa de estoque em lote registra movimentos de saída e debita o saldo,
+    sem depender de query/flush por linha (otimização para serverless)."""
+    seed_locais(db)
+    seed_sku_map(db)
+    path, _ = build_ml_xlsx(tmp_path / "ml.xlsx")
+    vendas = parse_ml(path)
+
+    resultado = importar_vendas(
+        db, vendas, CANAL_ML, baixar_estoque=True, gerar_financeiro=True
+    )
+    db.commit()
+
+    assert resultado.baixas_estoque > 0
+    assert resultado.contas_receber > 0
+
+    # Cada baixa gerou exatamente um movimento de saída.
+    movimentos = db.execute(
+        select(func.count()).select_from(MovimentoEstoque).where(
+            MovimentoEstoque.origem == "importacao"
+        )
+    ).scalar_one()
+    assert movimentos == resultado.baixas_estoque
+
+    # As vendas debitaram o saldo sem estoque inicial — — na importação a baixa
+    # não é bloqueada, então há saldo negativo (histórico fiel).
+    saldos = db.execute(select(EstoqueSaldo)).scalars().all()
+    assert any(Decimal(str(s.qtd_disponivel)) < 0 for s in saldos)
