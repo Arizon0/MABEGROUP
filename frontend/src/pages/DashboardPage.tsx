@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import type { Dashboard, DRE, RankingReceita } from "../types/dashboard";
+import type { Dre } from "../types/dre";
+
+const MESES = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
 
 function brl(v: string): string {
   const n = Number(v);
@@ -9,10 +16,16 @@ function brl(v: string): string {
     : `R$ ${v}`;
 }
 
+function pct(v: string): string {
+  const n = Number(v);
+  return Number.isFinite(n) ? `${n.toLocaleString("pt-BR")}%` : `${v}%`;
+}
+
 export function DashboardPage() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [dre, setDre] = useState<DRE | null>(null);
   const [ranking, setRanking] = useState<RankingReceita[]>([]);
+  const [dreMes, setDreMes] = useState<Dre | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -31,6 +44,21 @@ export function DashboardPage() {
         setErro(e instanceof Error ? e.message : "Erro ao carregar dashboard");
       } finally {
         setCarregando(false);
+      }
+    })();
+  }, []);
+
+  // DRE da competência mais recente — busca independente para nunca bloquear
+  // o restante do dashboard caso o módulo DRE ainda não tenha dados.
+  useEffect(() => {
+    (async () => {
+      try {
+        const comps = await api.getCompetencias();
+        if (comps.length === 0) return;
+        const { ano, mes } = comps[0];
+        setDreMes(await api.getDre(ano, mes, "todos"));
+      } catch {
+        // silencioso — o dashboard principal segue funcionando
       }
     })();
   }, []);
@@ -79,6 +107,30 @@ export function DashboardPage() {
             />
             <Kpi titulo="Unidades vendidas" valor={data.unidades_vendidas} />
           </div>
+
+          {dreMes && (
+            <div className="mb-6">
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-sm font-semibold uppercase text-gray-500">
+                  DRE ·{" "}
+                  {MESES[dreMes.competencia.mes - 1]} {dreMes.competencia.ano}
+                </h2>
+                <Link to="/dre" className="text-sm font-medium text-blue-600 hover:underline">
+                  Abrir DRE →
+                </Link>
+              </div>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <Kpi titulo="Receita líquida" valor={brl(dreMes.receitas.receita_liquida)} />
+                <Kpi titulo="CMV" valor={brl(dreMes.cmv)} />
+                <Kpi
+                  titulo="Lucro líquido"
+                  valor={brl(dreMes.lucro_liquido)}
+                  cor={Number(dreMes.lucro_liquido) >= 0 ? "text-green-600" : "text-red-600"}
+                />
+                <Kpi titulo="Margem líquida" valor={pct(dreMes.margens.liquida)} />
+              </div>
+            </div>
+          )}
 
           <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
             <Painel titulo="Líquido por canal">

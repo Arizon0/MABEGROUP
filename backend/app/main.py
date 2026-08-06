@@ -11,6 +11,32 @@ from app.config import CORS_ORIGINS, DATABASE_URL
 log = logging.getLogger(__name__)
 
 
+def _ensure_colunas_dre(engine) -> None:
+    """Adiciona colunas do módulo DRE em bancos criados antes da migration.
+
+    Em produção o schema é materializado por ``create_all()``, que cria tabelas
+    novas (ex.: ``dre_despesas``) mas **não altera** tabelas já existentes.
+    Estas ALTERs idempotentes garantem as colunas de CMV (vendas) e de gestão
+    (produtos) sem depender de rodar o Alembic no deploy serverless.
+
+    Só executa em Postgres (usa ``ADD COLUMN IF NOT EXISTS``); em SQLite as
+    tabelas são sempre recriadas por ``create_all`` com o schema atual.
+    """
+    if engine.dialect.name != "postgresql":
+        return
+    from sqlalchemy import text
+
+    comandos = (
+        "ALTER TABLE vendas ADD COLUMN IF NOT EXISTS custo_unitario NUMERIC(12,4) NOT NULL DEFAULT 0",
+        "ALTER TABLE vendas ADD COLUMN IF NOT EXISTS cmv NUMERIC(12,2) NOT NULL DEFAULT 0",
+        "ALTER TABLE produtos ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT TRUE",
+        "ALTER TABLE produtos ADD COLUMN IF NOT EXISTS observacoes VARCHAR(2048)",
+    )
+    with engine.begin() as conn:
+        for comando in comandos:
+            conn.execute(text(comando))
+
+
 def _init_db() -> None:
     """Cria tabelas e seed na primeira execução (idempotente, seguro de re-executar)."""
     try:
@@ -20,6 +46,7 @@ def _init_db() -> None:
         from app.seed import seed_admin, seed_catalogo, seed_locais, seed_sku_map
 
         Base.metadata.create_all(bind=engine)
+        _ensure_colunas_dre(engine)
 
         db = SessionLocal()
         try:

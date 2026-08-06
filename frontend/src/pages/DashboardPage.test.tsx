@@ -4,7 +4,12 @@ import { api } from "../api/client";
 import { DashboardPage } from "./DashboardPage";
 
 vi.mock("../api/client", () => ({
-  api: { getDashboard: vi.fn(), getRelatorio: vi.fn() },
+  api: {
+    getDashboard: vi.fn(),
+    getRelatorio: vi.fn(),
+    getCompetencias: vi.fn(),
+    getDre: vi.fn(),
+  },
 }));
 
 const mockApi = vi.mocked(api);
@@ -12,6 +17,8 @@ const mockApi = vi.mocked(api);
 describe("DashboardPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockApi.getCompetencias.mockResolvedValue([]);
+    mockApi.getDre.mockResolvedValue({} as never);
     mockApi.getDashboard.mockResolvedValue({
       faturamento_bruto: "62412.31",
       liquido_total: "40288.14",
