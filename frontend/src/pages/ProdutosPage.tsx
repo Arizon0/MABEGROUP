@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { Produto, ProdutoCreate } from "../types/cadastro";
+import type { ResultadoCatalogo } from "../types/importacao";
 
 const FORM_VAZIO: ProdutoCreate = {
   sku_base: "",
@@ -19,6 +20,8 @@ export function ProdutosPage() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [catalogo, setCatalogo] = useState<ResultadoCatalogo | null>(null);
+  const catalogoRef = useRef<HTMLInputElement>(null);
 
   const recarregar = useCallback(async (q?: string) => {
     setCarregando(true);
@@ -53,21 +56,66 @@ export function ProdutosPage() {
     }
   }
 
+  async function importarCatalogo(arquivo: File) {
+    setErro(null);
+    setCatalogo(null);
+    try {
+      const res = await api.importarCatalogo(arquivo);
+      setCatalogo(res);
+      await recarregar(busca);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Erro ao importar catálogo");
+    } finally {
+      if (catalogoRef.current) catalogoRef.current.value = "";
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl p-6">
       <header className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Produtos</h1>
-          <p className="text-sm text-gray-500">Cadastro de produtos e variantes.</p>
+          <p className="text-sm text-gray-500">
+            Cadastro de produtos. O SKU é extraído do nome na importação em massa.
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setMostrarForm((v) => !v)}
-          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          {mostrarForm ? "Cancelar" : "+ Novo produto"}
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            ref={catalogoRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) importarCatalogo(f);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => catalogoRef.current?.click()}
+            className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Importar catálogo
+          </button>
+          <button
+            type="button"
+            onClick={() => setMostrarForm((v) => !v)}
+            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            {mostrarForm ? "Cancelar" : "+ Novo produto"}
+          </button>
+        </div>
       </header>
+
+      {catalogo && (
+        <div className="mb-4 rounded border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-800">
+          Catálogo importado: {catalogo.criados} criado(s), {catalogo.atualizados}{" "}
+          atualizado(s) de {catalogo.linhas} linha(s).
+          {catalogo.erros.length > 0 && (
+            <span className="text-amber-700"> {catalogo.erros.length} com erro.</span>
+          )}
+        </div>
+      )}
 
       {erro && (
         <div className="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -164,6 +212,7 @@ export function ProdutosPage() {
                 <th className="px-3 py-2">SKU base</th>
                 <th className="px-3 py-2">Nome</th>
                 <th className="px-3 py-2">Categoria</th>
+                <th className="px-3 py-2 text-right">Preço custo</th>
                 <th className="px-3 py-2 text-right">Preço venda</th>
                 <th className="px-3 py-2 text-center">Variantes</th>
               </tr>
@@ -174,6 +223,9 @@ export function ProdutosPage() {
                   <td className="px-3 py-2 font-mono font-semibold">{p.sku_base}</td>
                   <td className="px-3 py-2">{p.nome}</td>
                   <td className="px-3 py-2 text-gray-600">{p.categoria ?? "—"}</td>
+                  <td className="px-3 py-2 text-right">
+                    {p.preco_compra ? `R$ ${p.preco_compra}` : "—"}
+                  </td>
                   <td className="px-3 py-2 text-right">
                     {p.preco_venda ? `R$ ${p.preco_venda}` : "—"}
                   </td>

@@ -52,6 +52,87 @@ export function ImportarPage() {
           <ImportCard key={c.canal} config={c} />
         ))}
       </div>
+
+      <SimplesCard />
+    </div>
+  );
+}
+
+function SimplesCard() {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [resultado, setResultado] = useState<ResultadoImportacao | null>(null);
+
+  async function enviar(arquivo: File) {
+    setEnviando(true);
+    setErro(null);
+    setResultado(null);
+    try {
+      setResultado(await api.importarVendasSimples(arquivo));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao importar");
+    } finally {
+      setEnviando(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  const naoCadastrados = resultado?.skus_nao_cadastrados ?? [];
+
+  return (
+    <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-5">
+      <h2 className="text-lg font-bold text-gray-900">Vendas — planilha simples</h2>
+      <p className="mt-1 text-sm text-gray-600">
+        Formato genérico para a DRE. Colunas: <span className="font-mono text-xs">SKU</span>,{" "}
+        <span className="font-mono text-xs">Preço de Venda</span>,{" "}
+        <span className="font-mono text-xs">Quantidade Vendida</span>,{" "}
+        <span className="font-mono text-xs">Marketplace</span>,{" "}
+        <span className="font-mono text-xs">Data</span>. O CMV é congelado pelo custo do produto.
+      </p>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".xlsx,.xls,.csv"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) enviar(f);
+        }}
+      />
+      <button
+        type="button"
+        disabled={enviando}
+        onClick={() => inputRef.current?.click()}
+        className="mt-4 rounded bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+      >
+        {enviando ? "Importando..." : "Escolher planilha e importar"}
+      </button>
+
+      {erro && (
+        <div className="mt-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {erro}
+        </div>
+      )}
+
+      {resultado && (
+        <div className="mt-4 rounded border border-green-300 bg-white p-4 text-sm">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+            <Linha rotulo="Linhas no arquivo" valor={String(resultado.linhas_arquivo)} />
+            <Linha rotulo="Vendas inseridas" valor={String(resultado.vendas_inseridas)} />
+            <Linha rotulo="Duplicados ignorados" valor={String(resultado.pedidos_duplicados)} />
+            {resultado.cmv_total && <Linha rotulo="CMV total" valor={brl(resultado.cmv_total)} />}
+          </dl>
+          {naoCadastrados.length > 0 && (
+            <div className="mt-3 rounded bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              <span className="font-semibold">SKU não cadastrado:</span>{" "}
+              {naoCadastrados.join(", ")}. Cadastre esses produtos em{" "}
+              <span className="font-semibold">Produtos</span> antes de consolidar a DRE.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

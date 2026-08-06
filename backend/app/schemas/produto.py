@@ -28,6 +28,8 @@ class ProdutoBase(BaseModel):
     estoque_seguranca: Decimal = Decimal("0")
     preco_compra: Optional[Decimal] = None
     preco_venda: Optional[Decimal] = None
+    ativo: bool = True
+    observacoes: Optional[str] = None
     fornecedor_padrao_id: Optional[int] = None
     produto_pai_id: Optional[int] = None
 
@@ -60,6 +62,8 @@ class ProdutoUpdate(BaseModel):
     estoque_seguranca: Optional[Decimal] = None
     preco_compra: Optional[Decimal] = None
     preco_venda: Optional[Decimal] = None
+    ativo: Optional[bool] = None
+    observacoes: Optional[str] = None
     fornecedor_padrao_id: Optional[int] = None
     produto_pai_id: Optional[int] = None
 

@@ -20,7 +20,13 @@ import type {
   RelatorioEstoque,
   Saldo,
 } from "../types/estoque";
-import type { ResultadoImportacao } from "../types/importacao";
+import type {
+  Competencia,
+  Dre,
+  DespesaUpsert,
+  Marketplace,
+} from "../types/dre";
+import type { ResultadoCatalogo, ResultadoImportacao } from "../types/importacao";
 import type {
   Produto,
   SkuMap,
@@ -76,6 +82,36 @@ export const api = {
 
   importarShopee: (arquivo: File) =>
     upload<ResultadoImportacao>(`/api/importar/shopee`, arquivo),
+
+  importarVendasSimples: (arquivo: File) =>
+    upload<ResultadoImportacao>(`/api/importar/vendas`, arquivo),
+
+  importarCatalogo: (arquivo: File) =>
+    upload<ResultadoCatalogo>(`/api/produtos/importar-catalogo`, arquivo),
+
+  // ---- DRE ----
+  getDre: (ano: number, mes: number, marketplace: Marketplace = "todos") =>
+    request<Dre>(
+      `/api/dre?ano=${ano}&mes=${mes}&marketplace=${encodeURIComponent(marketplace)}`,
+    ),
+
+  getCompetencias: () => request<Competencia[]>(`/api/dre/competencias`),
+
+  salvarDespesaDre: (payload: DespesaUpsert) =>
+    request<DespesaUpsert>(`/api/dre/despesas`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  urlExportDre: (
+    ano: number,
+    mes: number,
+    marketplace: Marketplace,
+    formato: "excel" | "pdf",
+  ) =>
+    `${BASE}/api/dre/export?ano=${ano}&mes=${mes}&marketplace=${encodeURIComponent(
+      marketplace,
+    )}&formato=${formato}`,
 
   // ---- SKU Map ----
   listarSkuMap: (canal?: string) =>

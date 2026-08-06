@@ -18,5 +18,16 @@ export interface ResultadoImportacao {
   skus_pendentes: number;
   baixas_estoque: number;
   contas_receber: number;
+  cmv_total?: string;
+  skus_nao_cadastrados?: string[];
   totais: TotaisImportacao;
+}
+
+export interface ResultadoCatalogo {
+  linhas: number;
+  criados: number;
+  atualizados: number;
+  ignorados: number;
+  erros: string[];
+  skus: string[];
 }

@@ -17,7 +17,7 @@ def _init_db() -> None:
         import app.models  # noqa: F401 — registra todos os models no metadata
         from app.database import SessionLocal, engine
         from app.models.base import Base
-        from app.seed import seed_admin, seed_locais, seed_sku_map
+        from app.seed import seed_admin, seed_catalogo, seed_locais, seed_sku_map
 
         Base.metadata.create_all(bind=engine)
 
@@ -25,6 +25,7 @@ def _init_db() -> None:
         try:
             seed_locais(db)
             seed_sku_map(db)
+            seed_catalogo(db)
             seed_admin(db)
         finally:
             db.close()
@@ -46,6 +47,7 @@ from app.routers import (  # noqa: E402
     admin,
     compras,
     dashboard,
+    dre,
     estoque,
     financeiro,
     fornecedores,
@@ -76,6 +78,7 @@ app.include_router(compras.router)
 app.include_router(dashboard.router)
 app.include_router(financeiro.router)
 app.include_router(relatorios.router)
+app.include_router(dre.router)
 
 
 @app.get("/health", tags=["infra"])

@@ -16,7 +16,15 @@ from app.models.sku_map import SkuMap
 from app.models.usuario import Usuario
 from app.services.auth import hash_senha
 
+from .catalogo_seed import seed_catalogo
 from .sku_map_seed import DE_PARA, iter_mapeamentos, nome_para
+
+__all__ = [
+    "seed_admin",
+    "seed_locais",
+    "seed_sku_map",
+    "seed_catalogo",
+]
 
 LOCAIS_PADRAO = [
     ("Galpão Central", LOCAL_GALPAO),

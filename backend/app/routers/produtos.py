@@ -1,6 +1,9 @@
 """Endpoints do cadastro de Produtos (GET/POST/PUT /api/produtos)."""
 from __future__ import annotations
 
+import io
+
+import pandas as pd
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -12,6 +15,7 @@ from app.models.produto import Produto
 from app.schemas.anexo import AnexoOut
 from app.schemas.produto import ProdutoCreate, ProdutoOut, ProdutoUpdate
 from app.services.anexos import adicionar_anexo, listar_anexos
+from app.services.catalogo import importar_catalogo, parse_catalogo
 
 router = APIRouter(prefix="/api/produtos", tags=["produtos"])
 
@@ -40,6 +44,36 @@ def obter_produto(produto_id: int, db: Session = Depends(get_db)):
     if produto is None:
         raise HTTPException(404, "Produto não encontrado")
     return produto
+
+
+@router.post("/importar-catalogo")
+def importar_catalogo_produtos(
+    arquivo: UploadFile = File(...), db: Session = Depends(get_db)
+):
+    """Cadastro em massa de produtos via planilha (.xlsx/.csv).
+
+    Extrai o SKU automaticamente do nome (parte final da descrição) e faz
+    upsert por SKU, atualizando o preço de custo dos já existentes.
+    """
+    conteudo = arquivo.file.read()
+    nome = (arquivo.filename or "").lower()
+    try:
+        if nome.endswith(".csv"):
+            df = pd.read_csv(io.BytesIO(conteudo), dtype=str)
+        else:
+            df = pd.read_excel(io.BytesIO(conteudo), dtype=str)
+    except Exception as exc:  # noqa: BLE001 — erro de leitura vira 422 legível
+        raise HTTPException(422, f"Não foi possível ler a planilha: {exc}")
+
+    registros = df.to_dict("records")
+    try:
+        linhas = parse_catalogo(registros)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    resultado = importar_catalogo(db, linhas)
+    db.commit()
+    return resultado.as_dict()
 
 
 @router.post("", response_model=ProdutoOut, status_code=201)
