@@ -142,6 +142,39 @@ def test_parse_estoque_coluna_local(cenario):
     assert set(r.locais) == {"Galpão Central", "ML Fulfillment"}
 
 
+def test_importar_estoque_substitui_local(cenario):
+    """A planilha vira a verdade do local: SKU ausente é zerado; outro local intacto."""
+    # Estoque inicial: galpão tem 5338 e 8126; Full tem 5338.
+    importar_estoque(cenario, parse_estoque([
+        {"SKU": "5338", "Galpão": "10", "ML Full": "40"},
+        {"SKU": "8126", "Galpão": "5", "ML Full": ""},
+    ]))
+    saldos = {
+        (s.produto_id, s.local_id): Decimal(str(s.qtd_disponivel))
+        for s in cenario.query(EstoqueSaldo).all()
+    }
+    assert len(saldos) == 3  # galpão:5338,8126 + full:5338
+
+    # Reimporta SÓ o galpão, agora sem o 8126: ele deve ser zerado no galpão.
+    r = importar_estoque(cenario, parse_estoque([
+        {"SKU": "5338", "Galpão": "7"},
+    ]))
+    assert r.zerados == 1
+
+    p5338 = cenario.query(Produto).filter_by(sku_base="5338").one()
+    p8126 = cenario.query(Produto).filter_by(sku_base="8126").one()
+    galpao = cenario.query(Local).filter_by(tipo=LOCAL_GALPAO).one()
+    full = cenario.query(Local).filter_by(tipo=LOCAL_FULFILLMENT).one()
+
+    def saldo(prod_id, local_id):
+        s = cenario.query(EstoqueSaldo).filter_by(produto_id=prod_id, local_id=local_id).one()
+        return Decimal(str(s.qtd_disponivel))
+
+    assert saldo(p5338.id, galpao.id) == Decimal("7")   # atualizado
+    assert saldo(p8126.id, galpao.id) == Decimal("0")   # zerado (ausente na planilha)
+    assert saldo(p5338.id, full.id) == Decimal("40")    # Full intacto (não veio na planilha)
+
+
 def test_endpoint_importar_estoque(client, cenario):
     conteudo = _planilha([
         {"SKU": "5338", "Galpão": 10, "ML Full": 40},

@@ -35,6 +35,7 @@ export interface ResultadoCatalogo {
 export interface ResumoLocalEstoque {
   local: string;
   atualizados: number;
+  zerados: number;
   unidades: string;
   valor: string;
 }
@@ -43,6 +44,7 @@ export interface ResultadoEstoque {
   linhas: number;
   atualizados: number;
   saldos_criados: number;
+  zerados: number;
   ignorados: number;
   unidades_total: string;
   valor_total: string;

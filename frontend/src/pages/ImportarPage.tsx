@@ -93,8 +93,9 @@ function EstoqueCard() {
         <span className="font-mono text-xs">ML Full</span> (quantidade em cada local) e{" "}
         <span className="font-mono text-xs">Custo</span> (opcional). Também aceita uma
         coluna <span className="font-mono text-xs">Quantidade</span> única ou uma coluna{" "}
-        <span className="font-mono text-xs">Local</span>. Cada saldo é ajustado e valorizado,
-        entrando no valor do estoque, no giro e nos alertas.
+        <span className="font-mono text-xs">Local</span>. A planilha{" "}
+        <span className="font-semibold">substitui</span> o estoque do(s) local(is) enviado(s):
+        SKU que não está na planilha é zerado naquele local; locais não enviados ficam intactos.
       </p>
 
       <input
@@ -138,7 +139,9 @@ function EstoqueCard() {
                   <Linha
                     key={pl.local}
                     rotulo={pl.local}
-                    valor={`${pl.unidades} un · ${brl(pl.valor)}`}
+                    valor={`${pl.unidades} un · ${brl(pl.valor)}${
+                      pl.zerados > 0 ? ` · ${pl.zerados} zerado(s)` : ""
+                    }`}
                   />
                 ))}
               </dl>
