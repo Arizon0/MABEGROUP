@@ -3,6 +3,15 @@ import { api } from "../api/client";
 import type { RelatorioEstoque, Saldo } from "../types/estoque";
 import type { ResultadoEstoque } from "../types/importacao";
 
+// Quantidades vêm como Numeric(10,3) ("40.000"). Formata sem o ponto virar
+// separador de milhar: 40.000 -> "40", 1.5 -> "1,5".
+function qtd(v: string): string {
+  const n = Number(v);
+  return Number.isFinite(n)
+    ? n.toLocaleString("pt-BR", { maximumFractionDigits: 3 })
+    : v;
+}
+
 export function EstoquePage() {
   const [saldos, setSaldos] = useState<Saldo[]>([]);
   const [relatorio, setRelatorio] = useState<RelatorioEstoque | null>(null);
@@ -84,7 +93,7 @@ export function EstoquePage() {
         <div className="mb-4 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
           <span className="font-semibold">Estoque importado</span> em{" "}
           {resultadoImport.local}: {resultadoImport.atualizados} SKU(s) atualizado(s),{" "}
-          {resultadoImport.unidades_total} unidades · valor R$ {resultadoImport.valor_total}.
+          {qtd(resultadoImport.unidades_total)} unidades · valor R$ {resultadoImport.valor_total}.
           {resultadoImport.nao_encontrados.length > 0 && (
             <span className="text-amber-700">
               {" "}
@@ -142,7 +151,7 @@ export function EstoquePage() {
                   <span className="font-mono font-semibold">{a.sku_base}</span> — {a.nome}
                 </span>
                 <span>
-                  {a.disponivel_total} / mín {a.estoque_minimo}
+                  {qtd(a.disponivel_total)} / mín {qtd(a.estoque_minimo)}
                 </span>
               </li>
             ))}
@@ -191,9 +200,9 @@ export function EstoquePage() {
                         disp <= 0 ? "text-red-600" : "text-gray-900"
                       }`}
                     >
-                      {s.qtd_disponivel}
+                      {qtd(s.qtd_disponivel)}
                     </td>
-                    <td className="px-3 py-2 text-right text-gray-500">{s.qtd_reservada}</td>
+                    <td className="px-3 py-2 text-right text-gray-500">{qtd(s.qtd_reservada)}</td>
                     <td className="px-3 py-2 text-right text-gray-600">R$ {s.custo_medio}</td>
                     <td className="px-3 py-2 text-right">R$ {s.valor_total}</td>
                   </tr>

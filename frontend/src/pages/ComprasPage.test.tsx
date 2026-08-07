@@ -57,6 +57,28 @@ describe("ComprasPage", () => {
     expect(screen.getByText("rascunho")).toBeInTheDocument();
   });
 
+  it("formata quantidades Numeric(10,3) sem virar milhar (189.000 -> 189)", async () => {
+    mockApi.sugestaoCompra.mockResolvedValue([
+      {
+        produto_id: 2,
+        sku_base: "8126",
+        nome: "Anel",
+        media_mensal: "12.000",
+        estoque_minimo: "50.000",
+        qtd_pendente: "0",
+        qtd_atual: "189.000",
+        qtd_sugerida: "158.000",
+        repor: true,
+      },
+    ]);
+    render(<ComprasPage />);
+    expect(await screen.findByText("189")).toBeInTheDocument();
+    expect(screen.getByText("158")).toBeInTheDocument();
+    // não deve exibir o valor cru que parece 189 mil
+    expect(screen.queryByText("189.000")).not.toBeInTheDocument();
+    expect(screen.queryByText("158.000")).not.toBeInTheDocument();
+  });
+
   it("aprova um pedido em rascunho", async () => {
     const user = userEvent.setup();
     mockApi.aprovarCompra.mockResolvedValue({} as never);

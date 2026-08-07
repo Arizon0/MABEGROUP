@@ -15,6 +15,15 @@ const STATUS_CORES: Record<StatusPedido, string> = {
   cancelado: "bg-red-100 text-red-700",
 };
 
+// Quantidades vêm como Numeric(10,3) ("189.000"). Formata sem o ponto virar
+// separador de milhar: 189.000 -> "189", 12.5 -> "12,5".
+function qtd(v: string): string {
+  const n = Number(v);
+  return Number.isFinite(n)
+    ? n.toLocaleString("pt-BR", { maximumFractionDigits: 3 })
+    : v;
+}
+
 const ITEM_VAZIO: ItemCompraIn = { produto_id: 0, qtd: "1", custo_unitario: "0" };
 
 export function ComprasPage() {
@@ -202,15 +211,15 @@ export function ComprasPage() {
                       <tr key={s.produto_id} className="hover:bg-gray-50">
                         <td className="px-3 py-2 font-mono font-semibold">{s.sku_base}</td>
                         <td className="px-3 py-2">{s.nome}</td>
-                        <td className="px-3 py-2 text-right text-gray-600">{s.media_mensal}</td>
-                        <td className="px-3 py-2 text-right text-gray-600">{s.estoque_minimo}</td>
-                        <td className="px-3 py-2 text-right text-gray-600">{s.qtd_atual}</td>
+                        <td className="px-3 py-2 text-right text-gray-600">{qtd(s.media_mensal)}</td>
+                        <td className="px-3 py-2 text-right text-gray-600">{qtd(s.estoque_minimo)}</td>
+                        <td className="px-3 py-2 text-right text-gray-600">{qtd(s.qtd_atual)}</td>
                         <td
                           className={`px-3 py-2 text-right font-bold ${
                             s.repor ? "text-red-600" : "text-green-600"
                           }`}
                         >
-                          {s.qtd_sugerida}
+                          {qtd(s.qtd_sugerida)}
                         </td>
                       </tr>
                     ))}
