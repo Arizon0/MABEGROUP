@@ -32,14 +32,22 @@ export interface ResultadoCatalogo {
   skus: string[];
 }
 
-export interface ResultadoEstoque {
+export interface ResumoLocalEstoque {
   local: string;
+  atualizados: number;
+  unidades: string;
+  valor: string;
+}
+
+export interface ResultadoEstoque {
   linhas: number;
   atualizados: number;
   saldos_criados: number;
   ignorados: number;
   unidades_total: string;
   valor_total: string;
+  locais: string[];
+  por_local: ResumoLocalEstoque[];
   nao_encontrados: string[];
   erros: string[];
 }

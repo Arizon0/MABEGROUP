@@ -85,14 +85,15 @@ export function EstoquePage() {
           >
             {importando ? "Importando..." : "Importar estoque atual"}
           </button>
-          <p className="mt-1 text-xs text-gray-400">Planilha: SKU + Quantidade (+ Custo)</p>
+          <p className="mt-1 text-xs text-gray-400">Planilha: SKU + Galpão + ML Full (+ Custo)</p>
         </div>
       </header>
 
       {resultadoImport && (
         <div className="mb-4 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-          <span className="font-semibold">Estoque importado</span> em{" "}
-          {resultadoImport.local}: {resultadoImport.atualizados} SKU(s) atualizado(s),{" "}
+          <span className="font-semibold">Estoque importado</span>
+          {resultadoImport.locais.length > 0 && <> em {resultadoImport.locais.join(", ")}</>}:{" "}
+          {resultadoImport.atualizados} saldo(s) atualizado(s),{" "}
           {qtd(resultadoImport.unidades_total)} unidades · valor R$ {resultadoImport.valor_total}.
           {resultadoImport.nao_encontrados.length > 0 && (
             <span className="text-amber-700">

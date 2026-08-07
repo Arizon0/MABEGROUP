@@ -85,13 +85,16 @@ function EstoqueCard() {
     <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-5">
       <h2 className="text-lg font-bold text-gray-900">Estoque atual</h2>
       <p className="mt-1 text-sm text-gray-600">
-        Suba a planilha com o estoque que você tem hoje. Colunas:{" "}
+        Suba a planilha com o estoque que você tem hoje, por local. Colunas:{" "}
         <span className="font-mono text-xs">SKU</span> (ou{" "}
         <span className="font-mono text-xs">Código</span>/
         <span className="font-mono text-xs">Nome</span>),{" "}
-        <span className="font-mono text-xs">Quantidade</span> e{" "}
-        <span className="font-mono text-xs">Custo</span> (opcional). O saldo de cada
-        SKU é ajustado e valorizado, entrando no valor do estoque, no giro e nos alertas.
+        <span className="font-mono text-xs">Galpão</span> e{" "}
+        <span className="font-mono text-xs">ML Full</span> (quantidade em cada local) e{" "}
+        <span className="font-mono text-xs">Custo</span> (opcional). Também aceita uma
+        coluna <span className="font-mono text-xs">Quantidade</span> única ou uma coluna{" "}
+        <span className="font-mono text-xs">Local</span>. Cada saldo é ajustado e valorizado,
+        entrando no valor do estoque, no giro e nos alertas.
       </p>
 
       <input
@@ -122,13 +125,25 @@ function EstoqueCard() {
       {resultado && (
         <div className="mt-4 rounded border border-green-300 bg-white p-4 text-sm">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
-            <Linha rotulo="Local" valor={resultado.local} />
-            <Linha rotulo="Linhas no arquivo" valor={String(resultado.linhas)} />
-            <Linha rotulo="SKUs atualizados" valor={String(resultado.atualizados)} />
+            <Linha rotulo="Saldos atualizados" valor={String(resultado.atualizados)} />
             <Linha rotulo="Novos saldos" valor={String(resultado.saldos_criados)} />
             <Linha rotulo="Unidades em estoque" valor={resultado.unidades_total} />
             <Linha rotulo="Valor do estoque" valor={brl(resultado.valor_total)} destaque />
           </dl>
+          {resultado.por_local.length > 0 && (
+            <div className="mt-3 border-t border-gray-100 pt-3">
+              <p className="mb-1 text-xs font-semibold uppercase text-gray-400">Por local</p>
+              <dl className="grid grid-cols-1 gap-y-1">
+                {resultado.por_local.map((pl) => (
+                  <Linha
+                    key={pl.local}
+                    rotulo={pl.local}
+                    valor={`${pl.unidades} un · ${brl(pl.valor)}`}
+                  />
+                ))}
+              </dl>
+            </div>
+          )}
           {naoEncontrados.length > 0 && (
             <div className="mt-3 rounded bg-amber-50 px-3 py-2 text-xs text-amber-700">
               <span className="font-semibold">SKU não encontrado no cadastro:</span>{" "}
