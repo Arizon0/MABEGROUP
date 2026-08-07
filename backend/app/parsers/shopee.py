@@ -13,13 +13,12 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Union
 
-import pandas as pd
-
 from .common import (
     CANAL_SHOPEE,
     STATUS_CANCELADO,
     STATUS_VALIDO,
     VendaDTO,
+    ler_linhas_xlsx,
     to_datetime,
     to_decimal,
     to_str,
@@ -64,9 +63,8 @@ def calcular_liquido_shopee(row: Any) -> Decimal:
 
 def parse_shopee(path: Union[str, Path]) -> list[VendaDTO]:
     """Lê o arquivo da Shopee e retorna uma lista de ``VendaDTO``."""
-    df = pd.read_excel(path, sheet_name=0, header=0, dtype=object)
-    df.columns = [str(c).strip() for c in df.columns]
-    return [_build_dto(row) for _, row in df.iterrows()]
+    linhas = ler_linhas_xlsx(path, header_row=0)
+    return [_build_dto(row) for row in linhas]
 
 
 # --------------------------------------------------------------------------- #

@@ -14,13 +14,13 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-import pandas as pd
-
 from app.parsers.common import (
     CANAL_ML,
     CANAL_SHOPEE,
     STATUS_VALIDO,
     VendaDTO,
+    ler_linhas_csv,
+    ler_linhas_xlsx,
     to_datetime,
     to_decimal,
     to_str,
@@ -68,11 +68,14 @@ def parse_simples(path: str | Path) -> list[VendaDTO]:
     """
     caminho = Path(path)
     if caminho.suffix.lower() == ".csv":
-        df = pd.read_csv(caminho, dtype=str)
+        linhas = ler_linhas_csv(caminho)
     else:
-        df = pd.read_excel(caminho, dtype=str)
+        linhas = ler_linhas_xlsx(caminho, header_row=0)
 
-    colunas = list(df.columns)
+    if not linhas:
+        return []
+
+    colunas = list(linhas[0].keys())
     col_sku = _achar(colunas, _COLS_SKU)
     col_preco = _achar(colunas, _COLS_PRECO)
     col_qtd = _achar(colunas, _COLS_QTD)
@@ -89,7 +92,7 @@ def parse_simples(path: str | Path) -> list[VendaDTO]:
         raise ValueError(f"Colunas obrigatórias ausentes: {', '.join(faltando)}")
 
     vendas: list[VendaDTO] = []
-    for indice, (_, row) in enumerate(df.iterrows()):
+    for indice, row in enumerate(linhas):
         sku = to_str(row.get(col_sku))
         if not sku:
             continue

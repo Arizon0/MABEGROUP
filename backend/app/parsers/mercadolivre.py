@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import Optional, Union
 
 import openpyxl
-import pandas as pd
 
 ZERO = Decimal("0")
 
@@ -27,6 +26,7 @@ from .common import (
     STATUS_VALIDO,
     VendaDTO,
     is_empty,
+    ler_linhas_xlsx,
     to_datetime,
     to_decimal,
     to_str,
@@ -128,9 +128,8 @@ def classificar_canal_logistico(forma_entrega: str) -> str:
 def parse_ml(path: Union[str, Path]) -> list[VendaDTO]:
     """Lê o arquivo do Mercado Livre e retorna uma lista de ``VendaDTO``."""
     header_row = detectar_header_ml(path)
-    df = pd.read_excel(path, sheet_name=0, header=header_row, dtype=object)
-    df.columns = [str(c).strip() for c in df.columns]
-    return _rows_to_dtos(df)
+    linhas = ler_linhas_xlsx(path, header_row=header_row)
+    return _rows_to_dtos(linhas)
 
 
 # --------------------------------------------------------------------------- #
@@ -138,34 +137,34 @@ def parse_ml(path: Union[str, Path]) -> list[VendaDTO]:
 # --------------------------------------------------------------------------- #
 
 
-def _get(row: pd.Series, col: str):
-    return row[col] if col in row.index else None
+def _get(row: dict, col: str):
+    return row.get(col)
 
 
-def _is_data_row(row: pd.Series) -> bool:
+def _is_data_row(row: dict) -> bool:
     """Linha de dados real precisa ter ao menos N.º de venda OU SKU."""
     return not is_empty(_get(row, COL_ID)) or not is_empty(_get(row, COL_SKU))
 
 
-def _is_package_summary(row: pd.Series) -> bool:
+def _is_package_summary(row: dict) -> bool:
     """Linha-resumo de pacote: marcada como pacote e sem SKU próprio."""
     pacote = to_str(_get(row, COL_PACOTE)).lower() == "sim"
     return pacote and is_empty(_get(row, COL_SKU))
 
 
-def _is_component(row: pd.Series) -> bool:
+def _is_component(row: dict) -> bool:
     """Linha-componente: tem SKU mas o financeiro (Total/Receita) está em branco."""
     tem_sku = not is_empty(_get(row, COL_SKU))
     sem_financeiro = is_empty(_get(row, COL_RECEITA)) and is_empty(_get(row, COL_TOTAL))
     return tem_sku and sem_financeiro
 
 
-def _rows_to_dtos(df: pd.DataFrame) -> list[VendaDTO]:
+def _rows_to_dtos(rows: list[dict]) -> list[VendaDTO]:
     resultado: list[VendaDTO] = []
-    n = len(df)
+    n = len(rows)
     i = 0
     while i < n:
-        row = df.iloc[i]
+        row = rows[i]
         if not _is_data_row(row):
             i += 1
             continue
@@ -174,8 +173,8 @@ def _rows_to_dtos(df: pd.DataFrame) -> list[VendaDTO]:
             financeiro = row
             componentes = []
             j = i + 1
-            while j < n and _is_component(df.iloc[j]):
-                componentes.append(df.iloc[j])
+            while j < n and _is_component(rows[j]):
+                componentes.append(rows[j])
                 j += 1
 
             # A linha-resumo carrega TODO o dinheiro (sku vazio, sem unidades).
@@ -194,9 +193,9 @@ def _rows_to_dtos(df: pd.DataFrame) -> list[VendaDTO]:
 
 
 def _build_dto(
-    row: pd.Series,
+    row: dict,
     *,
-    financeiro_row: Optional[pd.Series] = None,
+    financeiro_row: Optional[dict] = None,
     zero_money: bool = False,
     is_summary: bool = False,
 ) -> VendaDTO:
