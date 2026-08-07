@@ -78,6 +78,26 @@ def _soma_money(db: Session, coluna, *, data_inicio, data_fim, canal) -> Decimal
     return _soma(db, coluna, data_inicio=data_inicio, data_fim=data_fim, canal=canal).quantize(CENT)
 
 
+def _contagens(db: Session, *, data_inicio, data_fim, canal) -> tuple[int, int]:
+    """(nº de pedidos, nº de produtos distintos) das vendas válidas do período.
+
+    Pedido = par único (canal, id_pedido_canal) — pacotes multi-produto do ML
+    compartilham o mesmo id_pedido_canal, por isso contam como 1 venda.
+    Contagem feita em Python para ser independente do dialeto (SQLite/Postgres).
+    """
+    stmt = filtro_vendas(
+        select(Venda.canal, Venda.id_pedido_canal, Venda.sku_base),
+        data_inicio=data_inicio, data_fim=data_fim, canal=canal,
+    )
+    pedidos: set[tuple[str, str]] = set()
+    skus: set[str] = set()
+    for canal_row, id_pedido, sku in db.execute(stmt).all():
+        pedidos.add((canal_row, id_pedido))
+        if sku:
+            skus.add(sku)
+    return len(pedidos), len(skus)
+
+
 # --------------------------------------------------------------------------- #
 # Dashboard                                                                     #
 # --------------------------------------------------------------------------- #
@@ -94,7 +114,12 @@ def dashboard(
 
     faturamento_bruto = _soma_money(db, Venda.receita_bruta, data_inicio=data_inicio, data_fim=data_fim, canal=None)
     liquido_total = _soma_money(db, Venda.liquido_recebido, data_inicio=data_inicio, data_fim=data_fim, canal=None)
+    tarifas = _soma_money(db, Venda.tarifas_plataforma, data_inicio=data_inicio, data_fim=data_fim, canal=None)
+    frete = _soma_money(db, Venda.frete_liquido, data_inicio=data_inicio, data_fim=data_fim, canal=None)
+    descontos = _soma_money(db, Venda.descontos, data_inicio=data_inicio, data_fim=data_fim, canal=None)
+    cancelamentos = _soma_money(db, Venda.cancelamentos, data_inicio=data_inicio, data_fim=data_fim, canal=None)
     unidades = _soma(db, Venda.qtd, data_inicio=data_inicio, data_fim=data_fim, canal=None)
+    qtd_pedidos, produtos_distintos = _contagens(db, data_inicio=data_inicio, data_fim=data_fim, canal=None)
 
     liquido_por_canal = {}
     for canal in (CANAL_ML, CANAL_SHOPEE):
@@ -105,16 +130,127 @@ def dashboard(
     cmv = _cmv(db, data_inicio=data_inicio, data_fim=data_fim, canal=None)
     lucro_estimado = (liquido_total - cmv - custos_operacionais).quantize(CENT)
 
+    resumo = resumo_mensal(db)
+
     return {
         "faturamento_bruto": str(faturamento_bruto),
         "liquido_total": str(liquido_total),
         "liquido_por_canal": liquido_por_canal,
         "unidades_vendidas": str(unidades),
+        "qtd_pedidos": qtd_pedidos,
+        "produtos_distintos": produtos_distintos,
+        "entradas": {
+            "receita_bruta": str(faturamento_bruto),
+            "descontos_bonus": str(descontos),
+        },
+        "saidas": {
+            "tarifas_plataforma": str(tarifas),
+            "frete_liquido": str(frete),
+            "cancelamentos": str(cancelamentos),
+            "custo_produtos_vendidos": str(cmv),
+            "custos_operacionais": str(custos_operacionais),
+        },
         "custo_produtos_vendidos": str(cmv),
         "custos_operacionais": str(custos_operacionais),
         "lucro_estimado": str(lucro_estimado),
         "projecoes": _projecoes(db),
+        "mes_vigente": resumo[0] if resumo else None,
+        "resumo_mensal": resumo,
     }
+
+
+def resumo_mensal(db: Session, *, canal: str | None = None) -> list[dict]:
+    """Resumo detalhado por mês de competência (mais recente primeiro).
+
+    Para cada mês devolve entradas, saídas, contagens e uma **conferência**
+    que reconcilia o líquido recebido importado com a soma dos seus componentes
+    (receita + tarifas + frete + descontos + cancelamentos) — a prova de que os
+    números do dashboard batem linha a linha com os dados importados.
+
+    CMV usa o mesmo cálculo do dashboard (Σ unidades × preço de compra), para
+    que o resumo e os KPIs do topo sejam sempre consistentes entre si.
+    Agregação em Python para independência de dialeto (SQLite/Postgres).
+    """
+    precos = _mapa_preco_compra(db)
+    stmt = filtro_vendas(
+        select(
+            Venda.data_venda, Venda.canal, Venda.id_pedido_canal, Venda.sku_base,
+            Venda.qtd, Venda.receita_bruta, Venda.tarifas_plataforma,
+            Venda.frete_liquido, Venda.descontos, Venda.cancelamentos,
+            Venda.liquido_recebido,
+        ),
+        canal=canal,
+    ).where(Venda.data_venda.is_not(None))
+
+    meses: dict[str, dict] = {}
+    for row in db.execute(stmt).all():
+        (data_venda, canal_row, id_pedido, sku, qtd, receita, tarifas,
+         frete, descontos, cancelamentos, liquido) = row
+        chave = data_venda.strftime("%Y-%m")
+        m = meses.get(chave)
+        if m is None:
+            m = meses[chave] = {
+                "ano": data_venda.year, "mes_num": data_venda.month,
+                "pedidos": set(), "skus": set(),
+                "unidades": ZERO, "receita_bruta": ZERO, "tarifas_plataforma": ZERO,
+                "frete_liquido": ZERO, "descontos": ZERO, "cancelamentos": ZERO,
+                "liquido_recebido": ZERO, "cmv": ZERO,
+            }
+        m["pedidos"].add((canal_row, id_pedido))
+        if sku:
+            m["skus"].add(sku)
+        m["unidades"] += _d(qtd)
+        m["receita_bruta"] += _d(receita)
+        m["tarifas_plataforma"] += _d(tarifas)
+        m["frete_liquido"] += _d(frete)
+        m["descontos"] += _d(descontos)
+        m["cancelamentos"] += _d(cancelamentos)
+        m["liquido_recebido"] += _d(liquido)
+        m["cmv"] += _d(qtd) * precos.get(sku, ZERO)
+
+    resultado: list[dict] = []
+    for chave in sorted(meses, reverse=True):
+        m = meses[chave]
+        receita = m["receita_bruta"].quantize(CENT)
+        tarifas = m["tarifas_plataforma"].quantize(CENT)
+        frete = m["frete_liquido"].quantize(CENT)
+        descontos = m["descontos"].quantize(CENT)
+        cancelamentos = m["cancelamentos"].quantize(CENT)
+        liquido = m["liquido_recebido"].quantize(CENT)
+        cmv = m["cmv"].quantize(CENT)
+        lucro_bruto = (liquido - cmv).quantize(CENT)
+        soma_componentes = (receita + tarifas + frete + descontos + cancelamentos).quantize(CENT)
+        diferenca = (soma_componentes - liquido).quantize(CENT)
+        resultado.append({
+            "mes": chave,
+            "ano": m["ano"],
+            "mes_num": m["mes_num"],
+            "pedidos": len(m["pedidos"]),
+            "produtos_distintos": len(m["skus"]),
+            "unidades": str(m["unidades"].quantize(CENT)),
+            "receita_bruta": str(receita),
+            "tarifas_plataforma": str(tarifas),
+            "frete_liquido": str(frete),
+            "descontos": str(descontos),
+            "cancelamentos": str(cancelamentos),
+            "liquido_recebido": str(liquido),
+            "cmv": str(cmv),
+            "lucro_bruto": str(lucro_bruto),
+            "margem_liquida": str(_margem_pct(lucro_bruto, receita)),
+            "conferencia": {
+                "soma_componentes": str(soma_componentes),
+                "liquido_importado": str(liquido),
+                "diferenca": str(diferenca),
+                "confere": abs(diferenca) <= CENT,
+            },
+        })
+    return resultado
+
+
+def _margem_pct(numerador: Decimal, base: Decimal) -> Decimal:
+    if base == ZERO:
+        return ZERO
+    return (numerador / base * Decimal("100")).quantize(CENT)
 
 
 def _projecoes(db: Session, janela_dias: int = 30) -> dict:

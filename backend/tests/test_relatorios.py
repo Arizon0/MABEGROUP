@@ -75,6 +75,49 @@ def test_dashboard(cenario):
     assert set(d["projecoes"].keys()) == {"15", "30", "60", "90"}
 
 
+def test_dashboard_contagens(cenario):
+    d = analytics.dashboard(cenario)
+    # V1, V2, V3 válidas (V4 cancelada não conta) -> 3 pedidos únicos
+    assert d["qtd_pedidos"] == 3
+    # SKUs distintos vendidos: 5338 e 8126
+    assert d["produtos_distintos"] == 2
+    assert d["unidades_vendidas"] == "4.000"  # V1 2 + V2 1 + V3 1
+    # Entradas / Saídas expostas para o dashboard
+    assert d["entradas"]["receita_bruta"] == "180.00"
+    assert d["saidas"]["tarifas_plataforma"] == "-22.00"
+    assert d["saidas"]["custo_produtos_vendidos"] == "30.00"
+
+
+def test_resumo_mensal(cenario):
+    resumo = analytics.resumo_mensal(cenario)
+    por_mes = {m["mes"]: m for m in resumo}
+    # ordem: mais recente primeiro
+    assert [m["mes"] for m in resumo] == ["2026-06", "2026-05"]
+
+    jun = por_mes["2026-06"]
+    assert jun["pedidos"] == 2           # V1 (ML) + V2 (Shopee)
+    assert jun["produtos_distintos"] == 2
+    assert jun["unidades"] == "3.00"
+    assert jun["receita_bruta"] == "150.00"
+    assert jun["liquido_recebido"] == "123.00"  # 80 + 43
+    assert jun["cmv"] == "20.00"                 # V1 2*5 + V2 1*10
+    assert jun["lucro_bruto"] == "103.00"        # 123 - 20
+
+    mai = por_mes["2026-05"]
+    assert mai["pedidos"] == 1
+    assert mai["liquido_recebido"] == "25.00"
+
+
+def test_resumo_mensal_conferencia(cenario):
+    """A conferência reconcilia líquido importado x soma dos componentes."""
+    jun = next(m for m in analytics.resumo_mensal(cenario) if m["mes"] == "2026-06")
+    # V1: 100 -15 -5 = 80 ; V2: 50 -7 = 43 -> soma componentes = 123 = líquido
+    assert jun["conferencia"]["soma_componentes"] == "123.00"
+    assert jun["conferencia"]["liquido_importado"] == "123.00"
+    assert jun["conferencia"]["diferenca"] == "0.00"
+    assert jun["conferencia"]["confere"] is True
+
+
 def test_dre(cenario):
     dre = analytics.dre(cenario)
     assert dre["receita_bruta"] == "180.00"
