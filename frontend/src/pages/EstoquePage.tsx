@@ -93,7 +93,8 @@ export function EstoquePage() {
         <div className="mb-4 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
           <span className="font-semibold">Estoque importado</span>
           {resultadoImport.locais.length > 0 && <> em {resultadoImport.locais.join(", ")}</>}:{" "}
-          {resultadoImport.atualizados} saldo(s) atualizado(s),{" "}
+          {resultadoImport.atualizados} saldo(s) atualizado(s)
+          {resultadoImport.zerados > 0 && <>, {resultadoImport.zerados} zerado(s)</>},{" "}
           {qtd(resultadoImport.unidades_total)} unidades · valor R$ {resultadoImport.valor_total}.
           {resultadoImport.nao_encontrados.length > 0 && (
             <span className="text-amber-700">

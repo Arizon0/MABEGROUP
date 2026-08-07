@@ -11,9 +11,13 @@ Fulfillment**. A planilha suporta três formatos:
 3. **Um local só**: ``SKU`` + ``Quantidade`` (+ ``Custo``) — vai para o galpão
    (ou para o ``local_id`` informado).
 
-Para cada (SKU, local) o serviço faz um **ajuste de inventário**: define o
-saldo disponível igual ao valor da planilha (idempotente — reimportar não
-duplica) e registra a diferença no ledger com origem ``inventario``.
+Para cada local presente na planilha o serviço faz uma **substituição total**
+(a planilha vira a verdade daquele local): os SKUs listados recebem a
+quantidade informada e qualquer SKU que hoje tem saldo naquele local mas **não
+está na planilha é zerado**. Locais que não aparecem na planilha (ex.: importar
+só o galpão não mexe no Full) ficam intactos. Tudo idempotente — reimportar a
+mesma planilha dá o mesmo resultado — e cada mudança é registrada no ledger com
+origem ``inventario``.
 
 Com o estoque valorizado (quantidade × custo), os cálculos que dependem de
 estoque passam a considerar esses saldos: valor total do estoque, giro por SKU
@@ -99,6 +103,7 @@ class ResultadoEstoqueImport:
     linhas: int = 0
     atualizados: int = 0
     saldos_criados: int = 0
+    zerados: int = 0
     ignorados: int = 0
     unidades_total: Decimal = ZERO
     valor_total: Decimal = ZERO
@@ -107,11 +112,17 @@ class ResultadoEstoqueImport:
     nao_encontrados: list[str] = field(default_factory=list)
     erros: list[str] = field(default_factory=list)
 
+    def _local(self, nome: str) -> dict:
+        return self.por_local.setdefault(
+            nome, {"atualizados": 0, "zerados": 0, "unidades": ZERO, "valor": ZERO}
+        )
+
     def as_dict(self) -> dict:
         return {
             "linhas": self.linhas,
             "atualizados": self.atualizados,
             "saldos_criados": self.saldos_criados,
+            "zerados": self.zerados,
             "ignorados": self.ignorados,
             "unidades_total": str(self.unidades_total.quantize(Q_QTD)),
             "valor_total": str(self.valor_total.quantize(CENT)),
@@ -120,6 +131,7 @@ class ResultadoEstoqueImport:
                 {
                     "local": nome,
                     "atualizados": dados["atualizados"],
+                    "zerados": dados["zerados"],
                     "unidades": str(dados["unidades"].quantize(Q_QTD)),
                     "valor": str(dados["valor"].quantize(CENT)),
                 }
@@ -250,6 +262,10 @@ def importar_estoque(
             if produto is not None:
                 por_canal[sm.sku_canal.strip().upper()] = produto
 
+    # SKUs listados na planilha por local (para saber o que zerar depois).
+    locais_tocados: dict[int, Local] = {}
+    presentes_por_local: dict[int, set[int]] = {}
+
     for linha in linhas:
         resultado.linhas += 1
         produto = _resolver_produto(linha.sku_texto, por_sku, por_canal)
@@ -263,6 +279,8 @@ def importar_estoque(
             local = _local_por_tipo(db, linha.local_tipo, cache_local)
         else:
             local = _local_default(db, local_id, cache_local)
+        locais_tocados[local.id] = local
+        presentes_por_local.setdefault(local.id, set()).add(produto.id)
 
         qtd_nova = _d(linha.qtd)
         saldo = obter_ou_criar_saldo(db, produto.id, local.id)
@@ -278,14 +296,7 @@ def importar_estoque(
         saldo.qtd_disponivel = qtd_nova
 
         if delta != ZERO:
-            db.add(
-                MovimentoEstoque(
-                    produto_id=produto.id, local_id=local.id,
-                    tipo=MOV_ENTRADA if delta > 0 else MOV_SAIDA,
-                    qtd=abs(delta), custo_unitario=_d(saldo.custo_medio),
-                    origem="inventario", referencia="Importação de estoque",
-                )
-            )
+            _mov(db, produto.id, local.id, delta, _d(saldo.custo_medio))
 
         valor_linha = qtd_nova * _d(saldo.custo_medio)
         resultado.atualizados += 1
@@ -294,14 +305,42 @@ def importar_estoque(
         resultado.unidades_total += qtd_nova
         resultado.valor_total += valor_linha
 
-        agg = resultado.por_local.setdefault(
-            local.nome, {"atualizados": 0, "unidades": ZERO, "valor": ZERO}
-        )
+        agg = resultado._local(local.nome)
         agg["atualizados"] += 1
         agg["unidades"] += qtd_nova
         agg["valor"] += valor_linha
         if local.nome not in resultado.locais:
             resultado.locais.append(local.nome)
 
+    # Substituição total por local: zera os SKUs que têm saldo no local mas não
+    # vieram na planilha (a planilha vira a verdade daquele local).
+    for local_id_tocado, local in locais_tocados.items():
+        presentes = presentes_por_local.get(local_id_tocado, set())
+        saldos = db.execute(
+            select(EstoqueSaldo).where(EstoqueSaldo.local_id == local_id_tocado)
+        ).scalars().all()
+        for saldo in saldos:
+            if saldo.produto_id in presentes:
+                continue
+            atual = _d(saldo.qtd_disponivel)
+            if atual == ZERO:
+                continue
+            _mov(db, saldo.produto_id, local_id_tocado, -atual, _d(saldo.custo_medio))
+            saldo.qtd_disponivel = ZERO
+            resultado.zerados += 1
+            resultado._local(local.nome)["zerados"] += 1
+
     db.flush()
     return resultado
+
+
+def _mov(db: Session, produto_id: int, local_id: int, delta: Decimal, custo: Decimal) -> None:
+    """Registra no ledger o ajuste de inventário (entrada se +, saída se −)."""
+    db.add(
+        MovimentoEstoque(
+            produto_id=produto_id, local_id=local_id,
+            tipo=MOV_ENTRADA if delta > 0 else MOV_SAIDA,
+            qtd=abs(delta), custo_unitario=custo,
+            origem="inventario", referencia="Importação de estoque",
+        )
+    )
