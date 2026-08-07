@@ -1,0 +1,27 @@
+# Blueprint do Render — deploy do app (serviço único via Docker), sem Vercel.
+# Como usar:
+#   1. Suba este repositório no GitHub (já está).
+#   2. Em https://dashboard.render.com => New => Blueprint => conecte o repo.
+#   3. O Render lê este arquivo, builda o Dockerfile e publica em uma URL
+#      https://<nome>.onrender.com — pronto.
+#
+# Banco: por padrão usa SQLite dentro do container (reinicia a cada deploy, com
+# o seed recarregado). Para dados persistentes, crie um Postgres no Render e
+# defina DATABASE_URL no serviço (a app detecta e usa Postgres automaticamente).
+services:
+  - type: web
+    name: mabegroup-dre
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: INIT_DB
+        value: "1"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@erp.local
+      - key: ADMIN_SENHA
+        value: admin123

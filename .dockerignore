@@ -1,0 +1,13 @@
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.venv
+**/.pytest_cache
+**/.mypy_cache
+frontend/dist
+backend/*.db
+*.db
+.git
+.gitignore
+uploads
+scratchpad

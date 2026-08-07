@@ -2,9 +2,13 @@
 from __future__ import annotations
 
 import logging
+import os
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import CORS_ORIGINS, DATABASE_URL
 
@@ -62,11 +66,11 @@ def _init_db() -> None:
         log.warning("_init_db falhou: %s", exc)
 
 
-# Em produção (PostgreSQL) inicializa na importação do módulo — isso garante
-# que as tabelas existam antes do primeiro request, inclusive no cold start do
-# Vercel (que importa api/index.py → app.main antes de processar requests).
-# Em SQLite (dev/testes) usamos o banco que cada fixture já configura.
-if not DATABASE_URL.startswith("sqlite"):
+# Inicializa o schema + seed quando:
+#  - o banco é PostgreSQL (produção serverless: garante tabelas no cold start), ou
+#  - INIT_DB=1 (execução standalone/Docker, inclusive com SQLite).
+# Em testes (SQLite, sem INIT_DB) cada fixture cria o próprio schema.
+if os.getenv("INIT_DB") == "1" or not DATABASE_URL.startswith("sqlite"):
     _init_db()
 
 
@@ -111,3 +115,50 @@ app.include_router(dre.router)
 @app.get("/health", tags=["infra"])
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+def _resolver_static_dir() -> Path | None:
+    """Localiza a pasta do frontend compilado (``frontend/dist``), se existir."""
+    candidatos = []
+    env_dir = os.getenv("STATIC_DIR")
+    if env_dir:
+        candidatos.append(Path(env_dir))
+    aqui = Path(__file__).resolve()
+    # backend/app/main.py -> raiz do repo é 3 níveis acima
+    candidatos.append(aqui.parents[2] / "frontend" / "dist")
+    candidatos.append(Path("/app/frontend/dist"))
+    for c in candidatos:
+        if c.is_dir() and (c / "index.html").is_file():
+            return c
+    return None
+
+
+def _montar_frontend(app: FastAPI) -> None:
+    """Serve o SPA (React/Vite) pelo próprio backend — app roda como 1 serviço.
+
+    Só monta se ``frontend/dist`` existir (produção/Docker). Em dev/testes, onde
+    o build não está presente, não faz nada — a API continua igual.
+    """
+    dist = _resolver_static_dir()
+    if dist is None:
+        return
+
+    assets = dist / "assets"
+    if assets.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(assets)), name="assets")
+
+    @app.get("/{caminho:path}", include_in_schema=False)
+    def spa(caminho: str):
+        # Rotas de API/infra nunca caem aqui (routers registrados antes); mas se
+        # um /api/* inexistente chegar, devolve 404 em vez do index.
+        if caminho.startswith(("api/", "health")):
+            raise HTTPException(status_code=404, detail="Not Found")
+        arquivo = dist / caminho
+        if arquivo.is_file():
+            return FileResponse(str(arquivo))
+        return FileResponse(str(dist / "index.html"))
+
+    log.info("Frontend servido de %s", dist)
+
+
+_montar_frontend(app)
