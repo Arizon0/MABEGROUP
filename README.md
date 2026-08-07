@@ -4,6 +4,21 @@ ERP web multicanal para um vendedor de autopeças que opera no Mercado Livre e n
 Shopee. Veja [`CLAUDE.md`](./CLAUDE.md) para o contexto completo, regras de
 negócio e mapeamento das planilhas.
 
+## 🚀 Colocar no ar (sem Vercel)
+
+Um clique — publica de graça no Render (lê `render.yaml` + `Dockerfile`):
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Arizon0/MABEGROUP/tree/claude/dre-marketplace-system-gt0x9u)
+
+Ou rode na sua máquina com Docker (2 comandos → http://localhost:8000):
+
+```bash
+docker build -t mabegroup .
+docker run -p 8000:8000 mabegroup
+```
+
+Login inicial: `admin@erp.local` / `admin123`. Detalhes em [`DEPLOY.md`](./DEPLOY.md).
+
 ## Status — Prioridade 1 (Importação de Planilhas + SKU Map)
 
 Implementado nesta etapa:
