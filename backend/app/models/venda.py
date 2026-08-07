@@ -37,6 +37,10 @@ class Venda(Base):
     variacao: Mapped[str | None] = mapped_column(String(255), nullable=True)
     qtd: Mapped[float] = mapped_column(Numeric(10, 3), default=0)
     preco_unitario: Mapped[float] = mapped_column(Numeric(12, 4), default=0)
+    # Custo unitário e CMV congelados no momento da importação (regra: DREs
+    # antigas não mudam se o preço de custo do produto for alterado depois).
+    custo_unitario: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, server_default="0", default=0)
+    cmv: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, server_default="0", default=0)
     receita_bruta: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     tarifas_plataforma: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     frete_liquido: Mapped[float] = mapped_column(Numeric(12, 2), default=0)

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Numeric, String, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -46,6 +46,10 @@ class Produto(Base):
     estoque_seguranca: Mapped[float] = mapped_column(Numeric(10, 3), nullable=False, default=0)
     preco_compra: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
     preco_venda: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+
+    # DRE / gestão simples
+    ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="1", default=True)
+    observacoes: Mapped[str | None] = mapped_column(String(2048), nullable=True)
 
     # Fornecedor padrão
     fornecedor_padrao_id: Mapped[int | None] = mapped_column(

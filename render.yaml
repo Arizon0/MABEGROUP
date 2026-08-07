@@ -1,0 +1,37 @@
+# Blueprint do Render — deploy do app (serviço único via Docker), sem Vercel.
+# Como usar:
+#   1. Suba este repositório no GitHub (já está).
+#   2. Em https://dashboard.render.com => New => Blueprint => conecte o repo.
+#   3. O Render lê este arquivo, cria o banco Postgres, builda o Dockerfile e
+#      publica em https://<nome>.onrender.com — pronto.
+#
+# Os dados ficam em um PostgreSQL persistente (não somem entre deploys/restarts).
+databases:
+  - name: mabegroup-db
+    plan: free
+    databaseName: mabegroup
+    user: mabegroup
+
+services:
+  - type: web
+    name: mabegroup-dre
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Banco persistente: a app detecta Postgres e migra o schema sozinha.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mabegroup-db
+          property: connectionString
+      - key: INIT_DB
+        value: "1"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@erp.local
+      # Troque depois do primeiro login (Settings do serviço no Render).
+      - key: ADMIN_SENHA
+        value: admin123
