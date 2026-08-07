@@ -26,7 +26,11 @@ import type {
   DespesaUpsert,
   Marketplace,
 } from "../types/dre";
-import type { ResultadoCatalogo, ResultadoImportacao } from "../types/importacao";
+import type {
+  ResultadoCatalogo,
+  ResultadoEstoque,
+  ResultadoImportacao,
+} from "../types/importacao";
 import type {
   Produto,
   SkuMap,
@@ -88,6 +92,9 @@ export const api = {
 
   importarCatalogo: (arquivo: File) =>
     upload<ResultadoCatalogo>(`/api/produtos/importar-catalogo`, arquivo),
+
+  importarEstoque: (arquivo: File) =>
+    upload<ResultadoEstoque>(`/api/estoque/importar`, arquivo),
 
   // ---- DRE ----
   getDre: (ano: number, mes: number, marketplace: Marketplace = "todos") =>

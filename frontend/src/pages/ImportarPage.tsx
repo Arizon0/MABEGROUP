@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { api } from "../api/client";
-import type { ResultadoImportacao } from "../types/importacao";
+import type { ResultadoEstoque, ResultadoImportacao } from "../types/importacao";
 
 function brl(v: string): string {
   const n = Number(v);
@@ -54,6 +54,90 @@ export function ImportarPage() {
       </div>
 
       <SimplesCard />
+      <EstoqueCard />
+    </div>
+  );
+}
+
+function EstoqueCard() {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [resultado, setResultado] = useState<ResultadoEstoque | null>(null);
+
+  async function enviar(arquivo: File) {
+    setEnviando(true);
+    setErro(null);
+    setResultado(null);
+    try {
+      setResultado(await api.importarEstoque(arquivo));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao importar");
+    } finally {
+      setEnviando(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  const naoEncontrados = resultado?.nao_encontrados ?? [];
+
+  return (
+    <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-5">
+      <h2 className="text-lg font-bold text-gray-900">Estoque atual</h2>
+      <p className="mt-1 text-sm text-gray-600">
+        Suba a planilha com o estoque que você tem hoje. Colunas:{" "}
+        <span className="font-mono text-xs">SKU</span> (ou{" "}
+        <span className="font-mono text-xs">Código</span>/
+        <span className="font-mono text-xs">Nome</span>),{" "}
+        <span className="font-mono text-xs">Quantidade</span> e{" "}
+        <span className="font-mono text-xs">Custo</span> (opcional). O saldo de cada
+        SKU é ajustado e valorizado, entrando no valor do estoque, no giro e nos alertas.
+      </p>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".xlsx,.xls,.csv"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) enviar(f);
+        }}
+      />
+      <button
+        type="button"
+        disabled={enviando}
+        onClick={() => inputRef.current?.click()}
+        className="mt-4 rounded bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+      >
+        {enviando ? "Importando..." : "Escolher planilha e importar"}
+      </button>
+
+      {erro && (
+        <div className="mt-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {erro}
+        </div>
+      )}
+
+      {resultado && (
+        <div className="mt-4 rounded border border-green-300 bg-white p-4 text-sm">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+            <Linha rotulo="Local" valor={resultado.local} />
+            <Linha rotulo="Linhas no arquivo" valor={String(resultado.linhas)} />
+            <Linha rotulo="SKUs atualizados" valor={String(resultado.atualizados)} />
+            <Linha rotulo="Novos saldos" valor={String(resultado.saldos_criados)} />
+            <Linha rotulo="Unidades em estoque" valor={resultado.unidades_total} />
+            <Linha rotulo="Valor do estoque" valor={brl(resultado.valor_total)} destaque />
+          </dl>
+          {naoEncontrados.length > 0 && (
+            <div className="mt-3 rounded bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              <span className="font-semibold">SKU não encontrado no cadastro:</span>{" "}
+              {naoEncontrados.join(", ")}. Cadastre esses produtos em{" "}
+              <span className="font-semibold">Produtos</span> e importe novamente.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
