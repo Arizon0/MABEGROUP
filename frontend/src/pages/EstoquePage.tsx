@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { RelatorioEstoque, Saldo } from "../types/estoque";
+import type { ResultadoEstoque } from "../types/importacao";
 
 export function EstoquePage() {
   const [saldos, setSaldos] = useState<Saldo[]>([]);
@@ -8,6 +9,9 @@ export function EstoquePage() {
   const [busca, setBusca] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [importando, setImportando] = useState(false);
+  const [resultadoImport, setResultadoImport] = useState<ResultadoEstoque | null>(null);
 
   const recarregar = useCallback(async (q?: string) => {
     setCarregando(true);
@@ -30,12 +34,66 @@ export function EstoquePage() {
     void recarregar();
   }, [recarregar]);
 
+  async function importarEstoque(arquivo: File) {
+    setImportando(true);
+    setErro(null);
+    setResultadoImport(null);
+    try {
+      const res = await api.importarEstoque(arquivo);
+      setResultadoImport(res);
+      await recarregar(busca || undefined);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao importar estoque");
+    } finally {
+      setImportando(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl p-6">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Estoque</h1>
-        <p className="text-sm text-gray-500">Saldo por SKU × local, alertas e valorização.</p>
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Estoque</h1>
+          <p className="text-sm text-gray-500">Saldo por SKU × local, alertas e valorização.</p>
+        </div>
+        <div className="shrink-0 text-right">
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) importarEstoque(f);
+            }}
+          />
+          <button
+            type="button"
+            disabled={importando}
+            onClick={() => inputRef.current?.click()}
+            className="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {importando ? "Importando..." : "Importar estoque atual"}
+          </button>
+          <p className="mt-1 text-xs text-gray-400">Planilha: SKU + Quantidade (+ Custo)</p>
+        </div>
       </header>
+
+      {resultadoImport && (
+        <div className="mb-4 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          <span className="font-semibold">Estoque importado</span> em{" "}
+          {resultadoImport.local}: {resultadoImport.atualizados} SKU(s) atualizado(s),{" "}
+          {resultadoImport.unidades_total} unidades · valor R$ {resultadoImport.valor_total}.
+          {resultadoImport.nao_encontrados.length > 0 && (
+            <span className="text-amber-700">
+              {" "}
+              {resultadoImport.nao_encontrados.length} SKU(s) não encontrado(s):{" "}
+              {resultadoImport.nao_encontrados.join(", ")}.
+            </span>
+          )}
+        </div>
+      )}
 
       {erro && (
         <div className="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">

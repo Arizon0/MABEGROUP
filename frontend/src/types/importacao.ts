@@ -31,3 +31,15 @@ export interface ResultadoCatalogo {
   erros: string[];
   skus: string[];
 }
+
+export interface ResultadoEstoque {
+  local: string;
+  linhas: number;
+  atualizados: number;
+  saldos_criados: number;
+  ignorados: number;
+  unidades_total: string;
+  valor_total: string;
+  nao_encontrados: string[];
+  erros: string[];
+}

@@ -1,13 +1,16 @@
 """Endpoints de Estoque Multi-local (GET /api/estoque e movimentações)."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+import io
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.estoque import EstoqueSaldo, Local
 from app.models.produto import Produto
+from app.parsers.common import ler_linhas_csv, ler_linhas_xlsx
 from app.schemas.estoque import (
     AlertaOut,
     LocalOut,
@@ -18,6 +21,7 @@ from app.schemas.estoque import (
     SaldoSimplesOut,
 )
 from app.services import estoque as svc
+from app.services.estoque_import import importar_estoque, parse_estoque
 
 router = APIRouter(prefix="/api/estoque", tags=["estoque"])
 
@@ -90,6 +94,38 @@ def relatorio(
         alertas=[AlertaOut(**a.__dict__) for a in alertas],
         ranking_skus=[RankingItemOut(**r.__dict__) for r in ranking],
     )
+
+
+@router.post("/importar")
+def importar_estoque_planilha(
+    arquivo: UploadFile = File(...),
+    local_id: int | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Importa o estoque atual via planilha (.xlsx/.csv).
+
+    Colunas aceitas: SKU (ou Código/Referência/Nome) e Quantidade (ou Estoque),
+    com Custo opcional. Ajusta o saldo disponível de cada SKU no local informado
+    (default: galpão) e valoriza o estoque para entrar nos cálculos.
+    """
+    conteudo = arquivo.file.read()
+    nome = (arquivo.filename or "").lower()
+    try:
+        if nome.endswith(".csv"):
+            registros = ler_linhas_csv(conteudo)
+        else:
+            registros = ler_linhas_xlsx(io.BytesIO(conteudo))
+    except Exception as exc:  # noqa: BLE001 — erro de leitura vira 422 legível
+        raise HTTPException(422, f"Não foi possível ler a planilha: {exc}")
+
+    try:
+        linhas = parse_estoque(registros)
+        resultado = importar_estoque(db, linhas, local_id=local_id)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    db.commit()
+    return resultado.as_dict()
 
 
 @router.post("/movimentos", response_model=SaldoSimplesOut, status_code=201)
