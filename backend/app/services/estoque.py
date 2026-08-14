@@ -35,6 +35,33 @@ def _d(valor) -> Decimal:
     return valor if isinstance(valor, Decimal) else Decimal(str(valor or 0))
 
 
+def excluir_saldo(db: Session, produto_id: int, local_id: int) -> bool:
+    """Remove o saldo de um produto em um local (apaga item do estoque).
+
+    Registra a baixa remanescente no ledger (origem ``exclusao``) para manter o
+    histórico, depois apaga a linha de saldo. Lança 404 se não existir.
+    """
+    saldo = db.execute(
+        select(EstoqueSaldo).where(
+            EstoqueSaldo.produto_id == produto_id,
+            EstoqueSaldo.local_id == local_id,
+        )
+    ).scalar_one_or_none()
+    if saldo is None:
+        raise HTTPException(404, "Saldo de estoque não encontrado")
+
+    disp = _d(saldo.qtd_disponivel)
+    if disp != ZERO:
+        _registrar_movimento(
+            db, produto_id=produto_id, local_id=local_id, tipo=MOV_SAIDA,
+            qtd=abs(disp), custo_unitario=_d(saldo.custo_medio),
+            origem="exclusao", referencia="Exclusão de item do estoque",
+        )
+    db.delete(saldo)
+    db.flush()
+    return True
+
+
 def obter_ou_criar_saldo(db: Session, produto_id: int, local_id: int) -> EstoqueSaldo:
     saldo = db.execute(
         select(EstoqueSaldo).where(
