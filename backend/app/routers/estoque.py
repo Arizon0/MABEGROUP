@@ -21,6 +21,7 @@ from app.schemas.estoque import (
     SaldoSimplesOut,
 )
 from app.services import estoque as svc
+from app.services.compras_import import importar_compras, parse_compras
 from app.services.estoque_import import importar_estoque, parse_estoque
 
 router = APIRouter(prefix="/api/estoque", tags=["estoque"])
@@ -121,6 +122,46 @@ def importar_estoque_planilha(
     try:
         linhas = parse_estoque(registros)
         resultado = importar_estoque(db, linhas, local_id=local_id)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+    db.commit()
+    return resultado.as_dict()
+
+
+@router.delete("/saldos/{produto_id}/{local_id}", status_code=200)
+def excluir_saldo(produto_id: int, local_id: int, db: Session = Depends(get_db)):
+    """Apaga o saldo de um produto em um local (remove item do estoque)."""
+    svc.excluir_saldo(db, produto_id, local_id)
+    db.commit()
+    return {"removido": True, "produto_id": produto_id, "local_id": local_id}
+
+
+@router.post("/importar-compras")
+def importar_compras_planilha(
+    arquivo: UploadFile = File(...),
+    local_id: int | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Importa uma planilha de compras (entrada de estoque).
+
+    Colunas: SKU (ou Nome), Quantidade, Valor pago (custo unitário) e Frete
+    (opcional, rateado por unidade). Cada linha dá entrada no estoque com o
+    custo médio ponderado e atualiza o preço de compra do produto.
+    """
+    conteudo = arquivo.file.read()
+    nome = (arquivo.filename or "").lower()
+    try:
+        if nome.endswith(".csv"):
+            registros = ler_linhas_csv(conteudo)
+        else:
+            registros = ler_linhas_xlsx(io.BytesIO(conteudo))
+    except Exception as exc:  # noqa: BLE001 — erro de leitura vira 422 legível
+        raise HTTPException(422, f"Não foi possível ler a planilha: {exc}")
+
+    try:
+        linhas = parse_compras(registros)
+        resultado = importar_compras(db, linhas, local_id=local_id)
     except ValueError as exc:
         raise HTTPException(422, str(exc))
 

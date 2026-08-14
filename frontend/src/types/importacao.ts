@@ -40,6 +40,19 @@ export interface ResumoLocalEstoque {
   valor: string;
 }
 
+export interface ResultadoCompras {
+  linhas: number;
+  entradas: number;
+  ignorados: number;
+  unidades_total: string;
+  total_pago: string;
+  total_frete: string;
+  custo_total: string;
+  local: string;
+  nao_encontrados: string[];
+  erros: string[];
+}
+
 export interface ResultadoEstoque {
   linhas: number;
   atualizados: number;

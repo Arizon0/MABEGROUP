@@ -43,6 +43,22 @@ export function EstoquePage() {
     void recarregar();
   }, [recarregar]);
 
+  async function excluir(s: Saldo) {
+    if (
+      !window.confirm(
+        `Apagar o estoque de ${s.sku_base} em ${s.local_nome}? Esta ação remove o saldo desse item no local.`,
+      )
+    )
+      return;
+    setErro(null);
+    try {
+      await api.excluirSaldo(s.produto_id, s.local_id);
+      await recarregar(busca || undefined);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao apagar item");
+    }
+  }
+
   async function importarEstoque(arquivo: File) {
     setImportando(true);
     setErro(null);
@@ -187,6 +203,7 @@ export function EstoquePage() {
                 <th className="px-3 py-2 text-right">Reservado</th>
                 <th className="px-3 py-2 text-right">Custo médio</th>
                 <th className="px-3 py-2 text-right">Valor total</th>
+                <th className="px-3 py-2 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -207,6 +224,16 @@ export function EstoquePage() {
                     <td className="px-3 py-2 text-right text-gray-500">{qtd(s.qtd_reservada)}</td>
                     <td className="px-3 py-2 text-right text-gray-600">R$ {s.custo_medio}</td>
                     <td className="px-3 py-2 text-right">R$ {s.valor_total}</td>
+                    <td className="px-3 py-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => excluir(s)}
+                        className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                        title="Apagar item do estoque"
+                      >
+                        Apagar
+                      </button>
+                    </td>
                   </tr>
                 );
               })}

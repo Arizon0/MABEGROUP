@@ -28,6 +28,7 @@ import type {
 } from "../types/dre";
 import type {
   ResultadoCatalogo,
+  ResultadoCompras,
   ResultadoEstoque,
   ResultadoImportacao,
 } from "../types/importacao";
@@ -95,6 +96,14 @@ export const api = {
 
   importarEstoque: (arquivo: File) =>
     upload<ResultadoEstoque>(`/api/estoque/importar`, arquivo),
+
+  importarCompras: (arquivo: File) =>
+    upload<ResultadoCompras>(`/api/estoque/importar-compras`, arquivo),
+
+  excluirSaldo: (produtoId: number, localId: number) =>
+    request<{ removido: boolean }>(`/api/estoque/saldos/${produtoId}/${localId}`, {
+      method: "DELETE",
+    }),
 
   // ---- DRE ----
   getDre: (ano: number, mes: number, marketplace: Marketplace = "todos") =>
