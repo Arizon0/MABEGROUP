@@ -2,6 +2,7 @@
 from .anexo import Anexo
 from .base import Base
 from .compra import ItemPedidoCompra, PedidoCompra
+from .custos_venda import AdsInvestimento, AliquotaImposto
 from .dre import DespesaDRE
 from .estoque import EstoqueSaldo, Local, MovimentoEstoque
 from .financeiro import ContaPagar, ContaReceber
@@ -29,4 +30,6 @@ __all__ = [
     "SkuMap",
     "SkuPendencia",
     "Venda",
+    "AliquotaImposto",
+    "AdsInvestimento",
 ]

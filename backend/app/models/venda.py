@@ -25,6 +25,10 @@ class Venda(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     canal: Mapped[str] = mapped_column(String(20), nullable=False)
     id_pedido_canal: Mapped[str] = mapped_column(String(50), nullable=False)
+    # Número da nota fiscal, quando o export do canal traz a coluna. É o
+    # identificador que o vendedor reconhece na tela de análise; sem ele a
+    # linha cai de volta no id do pedido do canal.
+    numero_nf: Mapped[str | None] = mapped_column(String(30), nullable=True)
     data_venda: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     status_canal: Mapped[str] = mapped_column(String(255), default="")
     status_erp: Mapped[str] = mapped_column(String(20), default="Válido")

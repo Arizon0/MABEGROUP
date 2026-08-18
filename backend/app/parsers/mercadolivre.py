@@ -54,6 +54,16 @@ COL_CANCELAMENTOS = "Cancelamentos e reembolsos (BRL)"
 COL_TOTAL = "Total (BRL)"
 COL_PACOTE = "Pacote de diversos produtos"
 
+# A nota fiscal só aparece em exports de contas que emitem NF pelo ML, e o
+# nome da coluna varia entre versões do relatório. Ler todos os apelidos
+# conhecidos evita ter de descobrir qual export o vendedor baixou.
+COLS_NF = (
+    "N.º de nota fiscal",
+    "Nº de nota fiscal",
+    "Número da nota fiscal",
+    "Nota fiscal",
+)
+
 # Conjuntos de classificação de status (campo status_erp).
 # Estados confirmados em export real do ML (jun/2026): ver tests/data_real_states.
 CANCELADOS = {
@@ -139,6 +149,15 @@ def parse_ml(path: Union[str, Path]) -> list[VendaDTO]:
 
 def _get(row: dict, col: str):
     return row.get(col)
+
+
+def _nf(row: dict) -> Optional[str]:
+    """Primeiro apelido de coluna de NF que estiver preenchido na linha."""
+    for col in COLS_NF:
+        valor = to_str(row.get(col))
+        if valor:
+            return valor
+    return None
 
 
 def _is_data_row(row: dict) -> bool:
@@ -235,6 +254,7 @@ def _build_dto(
     return VendaDTO(
         canal=CANAL_ML,
         id_pedido_canal=id_pedido,
+        numero_nf=_nf(row) or (_nf(financeiro_row) if financeiro_row else None),
         data_venda=data,
         status_canal=estado,
         status_erp=classificar_status(estado),

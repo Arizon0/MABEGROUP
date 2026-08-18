@@ -1,4 +1,5 @@
 import { Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { AnaliseVendasPage } from "./pages/AnaliseVendasPage";
 import { ComprasPage } from "./pages/ComprasPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { DrePage } from "./pages/DrePage";
@@ -32,6 +33,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       <nav className="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-white px-6 py-3">
         <span className="mr-4 font-bold text-gray-900">ERP Multicanal</span>
         <NavItem to="/" label="Dashboard" />
+        <NavItem to="/analise-vendas" label="Análise de Vendas" />
         <NavItem to="/dre" label="DRE" />
         <NavItem to="/importar" label="Importar" />
         <NavItem to="/sku-map" label="Mapa de SKUs" />
@@ -56,6 +58,7 @@ export default function App() {
           <Layout>
             <Routes>
               <Route path="/" element={<DashboardPage />} />
+              <Route path="/analise-vendas" element={<AnaliseVendasPage />} />
               <Route path="/dre" element={<DrePage />} />
               <Route path="/importar" element={<ImportarPage />} />
               <Route path="/sku-map" element={<SkuMapPage />} />

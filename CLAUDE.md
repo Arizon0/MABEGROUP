@@ -161,6 +161,40 @@ ver `parsers/shopee.py::calcular_liquido_shopee`.
 
 ---
 
+## MARGEM POR PEDIDO — FÓRMULA CANÔNICA
+
+A tela `/analise-vendas` responde "quais pedidos deram prejuízo e por quê". A
+unidade é o **pedido** (`canal` + `id_pedido_canal`), não a linha da planilha —
+um pacote multi-produto do ML é uma linha-resumo com o dinheiro mais N
+linhas-componente com os SKUs; analisadas em separado, a primeira parece lucro
+puro e as outras, prejuízo total.
+
+```
+margem = liquido_recebido − CMV − Ads − Imposto
+margem % = margem ÷ receita_bruta
+```
+
+`liquido_recebido` já vem líquido do canal (armadilha nº 4) — as colunas
+**Comissão** e **Frete** explicam esse líquido, não são subtraídas de novo.
+
+Os dois custos que nenhum relatório de venda entrega:
+
+| Custo | Origem | Regra |
+|---|---|---|
+| `Imposto` | tabela `aliquotas_imposto` | alíquota efetiva da competência, **com vigência**: vale do mês cadastrado até a próxima. Mudar de faixa hoje não reescreve competência passada. |
+| `Ads` | tabela `ads_investimento` | rateado entre os pedidos do mês proporcional à receita. Cada pedido é coberto por **um só** lançamento — o de escopo mais específico: `anuncio` > `sku` > `canal`. |
+
+**ACOS ≠ TACOS** — a distinção é o motivo de existir a coluna `receita_ads`:
+
+- `ACOS` = investimento ÷ **receita atribuída à publicidade** pelo canal. Só o
+  relatório de Ads sabe esse número; sem ele a tela mostra `—`.
+- `TACOS` = investimento ÷ **receita total** do pedido. Sempre calculável.
+
+Verba lançada em anúncio que não vendeu no mês não some: vira
+`ads_nao_alocado` no resumo, com aviso na tela.
+
+---
+
 ## ARMADILHAS DE PARSING — CRÍTICO, não pular
 
 1. **Cabeçalho de metadados no ML** (até 5 linhas antes dos dados). Sempre rodar
@@ -207,6 +241,7 @@ Ver `app/seed/sku_map_seed.py`. ⚠️ `8126STA` (Shopee) é o mesmo produto que
 |---|---|---|
 | Importar planilha | `/importar` | `POST /api/importar/ml` e `/api/importar/shopee` |
 | Mapa de SKUs | `/sku-map` | `GET/POST /api/sku-map` |
+| Análise de Vendas | `/analise-vendas` | `GET /api/vendas/analise` |
 
 ---
 

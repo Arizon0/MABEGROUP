@@ -182,6 +182,7 @@ def _dto_to_model(dto: VendaDTO, custo: Decimal, cmv: Decimal) -> Venda:
     return Venda(
         canal=dto.canal,
         id_pedido_canal=dto.id_pedido_canal,
+        numero_nf=dto.numero_nf,
         data_venda=dto.data_venda,
         status_canal=dto.status_canal,
         status_erp=dto.status_erp,

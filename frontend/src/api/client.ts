@@ -1,4 +1,12 @@
 import type {
+  Ads,
+  AdsUpsert,
+  Aliquota,
+  AliquotaUpsert,
+  AnaliseVendas,
+  FiltroAnalise,
+} from "../types/analiseVendas";
+import type {
   Fornecedor,
   FornecedorCreate,
   Produto as ProdutoCompleto,
@@ -45,10 +53,12 @@ export interface FiltroRelatorio {
   [key: string]: string | undefined;
 }
 
-function qs(params: Record<string, string | undefined>): string {
-  const entries = Object.entries(params).filter(([, v]) => v);
+function qs(params: Record<string, string | number | undefined>): string {
+  // `0` e `""` são descartados de propósito: nenhum filtro desta API os usa
+  // como valor significativo, e omiti-los mantém a URL curta.
+  const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "");
   if (entries.length === 0) return "";
-  return "?" + entries.map(([k, v]) => `${k}=${encodeURIComponent(v as string)}`).join("&");
+  return "?" + entries.map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join("&");
 }
 
 const BASE = import.meta.env.VITE_API_URL ?? "";
@@ -65,6 +75,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const detail = await resp.text().catch(() => resp.statusText);
     throw new Error(`HTTP ${resp.status}: ${detail}`);
   }
+  // DELETE responde 204 sem corpo; `resp.json()` rejeitaria em corpo vazio.
+  if (resp.status === 204) return undefined as T;
   return (await resp.json()) as T;
 }
 
@@ -199,6 +211,42 @@ export const api = {
     request<PedidoCompra>(`/api/compras/${id}/receber`, {
       method: "POST",
       body: JSON.stringify({}),
+    }),
+
+  // ---- Análise venda-a-venda ----
+  getAnaliseVendas: (f: FiltroAnalise = {}) =>
+    request<AnaliseVendas>(`/api/vendas/analise${qs(f)}`),
+
+  urlExportAnalise: (formato: "excel" | "pdf", f: FiltroAnalise = {}) =>
+    `${BASE}/api/vendas/analise/export${qs({ ...f, pagina: undefined, tamanho: undefined, formato })}`,
+
+  listarAliquotas: () => request<Aliquota[]>(`/api/vendas/aliquotas`),
+
+  salvarAliquota: (payload: AliquotaUpsert) =>
+    request<Aliquota>(`/api/vendas/aliquotas`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  excluirAliquota: (id: number) =>
+    request<void>(`/api/vendas/aliquotas/${id}`, { method: "DELETE" }),
+
+  listarAds: (ano?: number, mes?: number, canal?: string) =>
+    request<Ads[]>(`/api/vendas/ads${qs({ ano, mes, canal })}`),
+
+  salvarAds: (payload: AdsUpsert) =>
+    request<Ads>(`/api/vendas/ads`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  excluirAds: (id: number) =>
+    request<void>(`/api/vendas/ads/${id}`, { method: "DELETE" }),
+
+  salvarNotaFiscal: (canal: string, id_pedido_canal: string, numero_nf: string | null) =>
+    request<unknown>(`/api/vendas/nf`, {
+      method: "PUT",
+      body: JSON.stringify({ canal, id_pedido_canal, numero_nf }),
     }),
 
   // ---- Dashboard / Financeiro / Relatórios ----

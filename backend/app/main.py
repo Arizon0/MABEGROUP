@@ -15,8 +15,8 @@ from app.config import CORS_ORIGINS, DATABASE_URL
 log = logging.getLogger(__name__)
 
 
-def _ensure_colunas_dre(engine) -> None:
-    """Adiciona colunas do módulo DRE em bancos criados antes da migration.
+def _ensure_colunas(engine) -> None:
+    """Adiciona colunas novas em bancos criados antes das migrations.
 
     Em produção o schema é materializado por ``create_all()``, que cria tabelas
     novas (ex.: ``dre_despesas``) mas **não altera** tabelas já existentes.
@@ -35,6 +35,7 @@ def _ensure_colunas_dre(engine) -> None:
         "ALTER TABLE vendas ADD COLUMN IF NOT EXISTS cmv NUMERIC(12,2) NOT NULL DEFAULT 0",
         "ALTER TABLE produtos ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT TRUE",
         "ALTER TABLE produtos ADD COLUMN IF NOT EXISTS observacoes VARCHAR(2048)",
+        "ALTER TABLE vendas ADD COLUMN IF NOT EXISTS numero_nf VARCHAR(30)",
     )
     with engine.begin() as conn:
         for comando in comandos:
@@ -50,7 +51,7 @@ def _init_db() -> None:
         from app.seed import seed_admin, seed_catalogo, seed_locais, seed_sku_map
 
         Base.metadata.create_all(bind=engine)
-        _ensure_colunas_dre(engine)
+        _ensure_colunas(engine)
 
         db = SessionLocal()
         try:
@@ -86,6 +87,7 @@ from app.routers import (  # noqa: E402
     produtos,
     relatorios,
     sku_map,
+    vendas,
 )
 
 app = FastAPI(title="ERP Multicanal — Marketplace", version="0.1.0")
@@ -110,6 +112,7 @@ app.include_router(dashboard.router)
 app.include_router(financeiro.router)
 app.include_router(relatorios.router)
 app.include_router(dre.router)
+app.include_router(vendas.router)
 
 
 @app.get("/health", tags=["infra"])

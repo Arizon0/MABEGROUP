@@ -35,6 +35,7 @@ class VendaDTO:
     status_canal: str                # status original do canal
     status_erp: str                  # 'Válido' | 'Cancelado' | 'Devolução'
     sku_canal: str                   # código como veio no relatório
+    numero_nf: Optional[str] = None  # só quando o export do canal traz
     sku_base: Optional[str] = None   # preenchido após lookup na tabela sku_map
     id_anuncio: Optional[str] = None
     titulo: str = ""

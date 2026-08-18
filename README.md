@@ -113,6 +113,34 @@ Implementado nesta etapa:
 
 ---
 
+## Status — Análise de Vendas (margem real por pedido)
+
+Tela `/analise-vendas`: a margem de **cada pedido**, com os custos que as
+planilhas do canal não entregam reconstruídos.
+
+- **Serviço** (`backend/app/services/vendas_analise.py`): consolida as linhas
+  importadas em pedidos (pacote multi-produto vira 1 pedido), aplica imposto e
+  rateia publicidade. `margem = líquido − CMV − Ads − Imposto`.
+- **Imposto** (`aliquotas_imposto`): alíquota efetiva **com vigência** por
+  competência — cadastrar agosto não reescreve o imposto já apurado em maio.
+- **Publicidade** (`ads_investimento`): investimento do mês rateado proporcional
+  à receita, no escopo mais específico que casar (anúncio → SKU → canal).
+  **ACOS** usa a receita que o canal atribuiu a Ads (mostra `—` sem ela);
+  **TACOS** usa a receita total.
+- **Recortes**: todos · só negativos · sem custo · sem comissão · sem frete ·
+  vários pacotes · a receber não bate. Cada chip mostra quantos pedidos esconde.
+- **Ordenações**: pior/melhor margem em R$ e em %, maior venda, maior frete, data.
+- **Qualidade do dado**: alertas por pedido (`sem_sku`, `sem_custo`,
+  `sem_comissao`, `receber_nao_bate`) e aviso quando sobra verba de Ads sem ratear.
+- **Nota fiscal**: lida do export do ML quando existe, editável na própria linha.
+- **Endpoints**: `GET /api/vendas/analise`, `/analise/opcoes`, `/analise/export`
+  (Excel/PDF), CRUD de `/aliquotas` e `/ads`, `PUT /nf`.
+- **Migration** Alembic `b7c1e2f30a44`.
+
+> Testes: backend **186 passed / 3 skipped**, frontend **32 passed**.
+
+---
+
 ### Roadmap concluído
 
 Prioridades 1 → 5 implementadas (parsers + SKU Map, cadastros, estoque,
