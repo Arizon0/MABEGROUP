@@ -40,9 +40,11 @@ export function LoginPage() {
         <p className="mt-1 mb-6 text-sm text-slate-500">Entre para acessar o sistema.</p>
 
         <label className="mb-4 block text-sm font-medium text-slate-700">
-          E-mail
+          Usuário
+          {/* type="text" e não "email": o login pode ser um nome de usuário
+              simples, que o navegador recusaria num campo de e-mail. */}
           <input
-            type="email"
+            type="text"
             autoComplete="username"
             required
             className="input mt-1 block w-full"

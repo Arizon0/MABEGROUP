@@ -11,7 +11,7 @@ const mockApi = vi.mocked(api);
 const USUARIO = { id: 1, email: "admin@erp.local", nome: "Admin", perfil: "admin" };
 
 async function preencherEEntrar(user: ReturnType<typeof userEvent.setup>, senha = "admin123") {
-  await user.type(screen.getByLabelText("E-mail"), "admin@erp.local");
+  await user.type(screen.getByLabelText("Usuário"), "admin@erp.local");
   await user.type(screen.getByLabelText("Senha"), senha);
   await user.click(screen.getByRole("button", { name: "Entrar" }));
 }
@@ -45,14 +45,14 @@ describe("LoginPage", () => {
     expect(tokenAtual()).toBeNull();
   });
 
-  it("não revela se o e-mail existe", async () => {
+  it("não revela se o usuário existe", async () => {
     const user = userEvent.setup();
     mockApi.login.mockRejectedValue(new Error("HTTP 401: nao autorizado"));
     render(<LoginPage />);
     await preencherEEntrar(user);
 
     const alerta = await screen.findByRole("alert");
-    expect(alerta.textContent).not.toMatch(/e-mail não (existe|encontrado)/i);
+    expect(alerta.textContent).not.toMatch(/(usuário|e-mail) não (existe|encontrado)/i);
   });
 
   it("erro de rede tem mensagem diferente de credencial", async () => {
@@ -77,7 +77,7 @@ describe("LoginPage", () => {
 
   it("os campos ajudam o gerenciador de senhas do navegador", () => {
     render(<LoginPage />);
-    expect(screen.getByLabelText("E-mail")).toHaveAttribute("autocomplete", "username");
+    expect(screen.getByLabelText("Usuário")).toHaveAttribute("autocomplete", "username");
     expect(screen.getByLabelText("Senha")).toHaveAttribute("autocomplete", "current-password");
   });
 });

@@ -74,3 +74,28 @@ describe("App", () => {
     expect(screen.queryByText("painel")).not.toBeInTheDocument();
   });
 });
+
+describe("App — menu por perfil", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  it("admin enxerga o item Usuários", () => {
+    guardarSessao("t", USUARIO);
+    montar();
+    expect(screen.getByRole("link", { name: "Usuários" })).toBeInTheDocument();
+  });
+
+  it("analista não enxerga o item Usuários", () => {
+    guardarSessao("t", { ...USUARIO, perfil: "analista" });
+    montar();
+    expect(screen.queryByRole("link", { name: "Usuários" })).not.toBeInTheDocument();
+  });
+
+  it("viewer não enxerga o item Usuários", () => {
+    guardarSessao("t", { ...USUARIO, perfil: "viewer" });
+    montar();
+    expect(screen.queryByRole("link", { name: "Usuários" })).not.toBeInTheDocument();
+  });
+});

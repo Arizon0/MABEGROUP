@@ -17,10 +17,12 @@ from app.models.usuario import Usuario
 from app.services.auth import hash_senha
 
 from .catalogo_seed import seed_catalogo
+from .usuarios import seed_usuarios
 from .sku_map_seed import DE_PARA, iter_mapeamentos, nome_para
 
 __all__ = [
     "seed_admin",
+    "seed_usuarios",
     "seed_locais",
     "seed_sku_map",
     "seed_catalogo",

@@ -41,3 +41,11 @@ services:
       # mesmo serviço, nenhuma outra origem precisa chamar esta API.
       - key: CORS_ORIGINS
         value: https://mabegroup-dre.onrender.com
+      # Contas de proprietário criadas no primeiro boot, com perfil admin.
+      - key: USUARIOS_INICIAIS
+        value: arizono,Canaveze
+      # A senha NÃO fica aqui: preencha em Environment, no painel do serviço.
+      # Senha em arquivo versionado fica no histórico do Git para sempre,
+      # inclusive depois de trocada no sistema.
+      - key: SENHA_INICIAL
+        sync: false

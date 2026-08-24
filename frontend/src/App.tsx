@@ -19,6 +19,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { ProdutosPage } from "./pages/ProdutosPage";
 import { RelatoriosPage } from "./pages/RelatoriosPage";
 import { SkuMapPage } from "./pages/SkuMapPage";
+import { UsuariosPage } from "./pages/UsuariosPage";
 
 function NavItem({ to, label }: { to: string; label: string }) {
   return (
@@ -53,6 +54,9 @@ function Layout({ children }: { children: React.ReactNode }) {
         <NavItem to="/compras" label="Compras" />
         <NavItem to="/financeiro" label="Financeiro" />
         <NavItem to="/relatorios" label="Relatórios" />
+        {/* Só admin gerencia usuários. Esconder o item é conveniência — a
+            recusa de verdade vem do servidor, que responde 403. */}
+        {usuario?.perfil === "admin" && <NavItem to="/usuarios" label="Usuários" />}
         <div className="ml-auto flex items-center gap-3">
           <NavLink
             to="/conta"
@@ -112,6 +116,7 @@ export default function App() {
               <Route path="/financeiro" element={<FinanceiroPage />} />
               <Route path="/relatorios" element={<RelatoriosPage />} />
               <Route path="/conta" element={<ContaPage />} />
+              <Route path="/usuarios" element={<UsuariosPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>

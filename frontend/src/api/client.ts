@@ -1,6 +1,11 @@
 import { encerrarSessao, tokenAtual } from "./sessao";
 import type { UsuarioSessao } from "./sessao";
 import type {
+  Usuario,
+  UsuarioCreate,
+  UsuarioUpdate,
+} from "../types/usuario";
+import type {
   Ads,
   AdsUpsert,
   Aliquota,
@@ -159,6 +164,30 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ senha_atual, senha_nova }),
     }),
+
+  // ---- Usuários (só admin) ----
+  listarUsuarios: () => request<Usuario[]>(`/api/usuarios`),
+
+  criarUsuario: (payload: UsuarioCreate) =>
+    request<Usuario>(`/api/usuarios`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  atualizarUsuario: (id: number, payload: UsuarioUpdate) =>
+    request<Usuario>(`/api/usuarios/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  redefinirSenhaUsuario: (id: number, senha_nova: string) =>
+    request<Usuario>(`/api/usuarios/${id}/senha`, {
+      method: "PUT",
+      body: JSON.stringify({ senha_nova }),
+    }),
+
+  excluirUsuario: (id: number) =>
+    request<void>(`/api/usuarios/${id}`, { method: "DELETE" }),
 
   // ---- Importação de planilhas ----
   importarML: (arquivo: File) =>

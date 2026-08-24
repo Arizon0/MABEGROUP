@@ -170,6 +170,27 @@ exigia token. A API inteira respondia sem credencial. Esta entrega ligou tudo.
 
 ---
 
+## Status — Usuários e perfis de acesso
+
+- **Três perfis** (`viewer`, `analista`, `admin`) verificados no servidor. O
+  bloqueio do perfil de leitura é por **método HTTP**, declarado no registro dos
+  routers — endpoint de escrita novo já nasce fechado para ele.
+- **Tela Usuários** (só admin): criar, trocar perfil, ativar/desativar,
+  redefinir senha e excluir. O item some do menu para os outros perfis, mas a
+  recusa de verdade é o 403 do servidor.
+- **Ninguém se tranca do lado de fora**: o sistema recusa qualquer operação que
+  zeraria os administradores ativos, inclusive um admin rebaixando a si mesmo.
+  Com outro admin ativo, é liberado — um sócio pode sair. Admin desativado não
+  conta como substituto.
+- **Contas de proprietário no primeiro boot** via `USUARIOS_INICIAIS` e
+  `SENHA_INICIAL`. Idempotente e nunca reescreve senha já trocada. Sem a senha
+  no ambiente, não cria conta alguma — em vez de embutir uma no repositório.
+- **Login aceita nome de usuário**, não só e-mail.
+
+> Testes: backend **311 passed / 3 skipped**, frontend **75 passed**.
+
+---
+
 ### Roadmap concluído
 
 Prioridades 1 → 5 implementadas (parsers + SKU Map, cadastros, estoque,

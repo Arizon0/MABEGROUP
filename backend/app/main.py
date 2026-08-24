@@ -48,7 +48,13 @@ def _init_db() -> None:
         import app.models  # noqa: F401 — registra todos os models no metadata
         from app.database import SessionLocal, engine
         from app.models.base import Base
-        from app.seed import seed_admin, seed_catalogo, seed_locais, seed_sku_map
+        from app.seed import (
+            seed_admin,
+            seed_catalogo,
+            seed_locais,
+            seed_sku_map,
+            seed_usuarios,
+        )
 
         Base.metadata.create_all(bind=engine)
         _ensure_colunas(engine)
@@ -59,6 +65,7 @@ def _init_db() -> None:
             seed_sku_map(db)
             seed_catalogo(db)
             seed_admin(db)
+            seed_usuarios(db)
         finally:
             db.close()
 
@@ -88,10 +95,11 @@ from app.routers import (  # noqa: E402
     produtos,
     relatorios,
     sku_map,
+    usuarios,
     vendas,
 )
 
-from app.services.auth import get_current_user  # noqa: E402
+from app.services.permissoes import autorizar_escrita  # noqa: E402
 
 # Aborta o boot se a app estiver indo para produção com segredo de exemplo.
 for _aviso in validar_configuracao():
@@ -120,7 +128,10 @@ app.include_router(admin.router)
 # endpoint novo entra protegido por padrão, e esquecer a dependência deixa de
 # ser uma forma de vazar dado financeiro. Todo endpoint abaixo responde 401 sem
 # um ``Authorization: Bearer`` válido.
-PROTEGIDO = [Depends(get_current_user)]
+# ``autorizar_escrita`` já depende de ``get_current_user``, então cobre a
+# autenticação e, de quebra, barra o perfil de leitura em qualquer método
+# que altere dados.
+PROTEGIDO = [Depends(autorizar_escrita)]
 
 for _router in (
     importar.router,
@@ -136,6 +147,10 @@ for _router in (
     vendas.router,
 ):
     app.include_router(_router, dependencies=PROTEGIDO)
+
+# Cadastro de usuários: o próprio router já exige perfil admin, que por sua
+# vez depende de get_current_user — então token continua obrigatório.
+app.include_router(usuarios.router)
 
 
 @app.get("/health", tags=["infra"])

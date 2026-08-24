@@ -130,14 +130,56 @@ O `render.yaml` já resolve isso sozinho: `SECRET_KEY` e `ADMIN_SENHA` usam
 do primeiro deploy, leia a senha em **Environment** no painel do serviço, entre
 uma vez e troque em **Minha conta**.
 
+### Usuários e perfis
+
+Três perfis, verificados **no servidor**:
+
+| Perfil | Pode |
+|---|---|
+| `viewer` | só consulta. Qualquer método que altere dados responde 403 |
+| `analista` | opera o sistema: importa, edita, lança, exclui. Não vê nem mexe em usuários |
+| `admin` | tudo, incluindo o cadastro de usuários |
+
+O bloqueio do `viewer` é por **método HTTP**, aplicado no registro dos routers:
+um endpoint de escrita novo já nasce fechado para ele, sem ninguém precisar
+lembrar de anotá-lo.
+
+O cadastro fica em **Usuários** (visível só para admin). O item some do menu
+para os outros perfis, mas isso é conveniência: quem chamar `/api/usuarios`
+direto leva 403 do mesmo jeito.
+
+**Ninguém se tranca do lado de fora.** O sistema recusa qualquer operação que
+deixaria zero administradores ativos — inclusive um admin rebaixando a si
+mesmo. Quando há outro admin ativo, a operação é liberada (um sócio pode sair).
+Admin desativado não conta como substituto. Excluir a própria conta logada é
+sempre recusado; para sair, desative ou rebaixe.
+
+### Contas de proprietário no primeiro boot
+
+Para um deploy novo já subir com os donos podendo entrar, defina:
+
+| Variável | Exemplo |
+|---|---|
+| `USUARIOS_INICIAIS` | `arizono,Canaveze` |
+| `SENHA_INICIAL` | a senha que os dois vão usar no primeiro acesso |
+
+As contas nascem com perfil `admin`. O seed é idempotente e **nunca reescreve a
+senha de um login que já existe** — se alguém já trocou a dele, rodar o seed de
+novo não desfaz isso.
+
+Sem `SENHA_INICIAL` definida, nenhuma conta é criada e o log avisa o motivo. É
+proposital: uma senha embutida no código entraria no histórico do Git e
+continuaria pública mesmo depois de trocada no sistema.
+
+Depois do primeiro acesso, apague ou desative a conta genérica
+`admin@erp.local` em **Usuários** — ela existe só para o bootstrap.
+
 ### O que ainda não existe
 
-- **Cadastro de usuários pela interface.** O modelo suporta vários usuários e
-  perfis, mas hoje só o admin do seed é criado. Para mais pessoas, é preciso
-  inserir no banco ou construir a tela.
 - **Limite de tentativas de login.** Nada impede um atacante de testar senhas em
   série. Com senha forte o risco é baixo, mas se o sistema for ficar exposto por
   muito tempo, vale colocar rate limit.
-- **Papéis com poderes diferentes.** O campo `perfil` existe e é devolvido no
-  token, mas nenhum endpoint distingue admin de leitor ainda — todo usuário
-  autenticado pode tudo.
+- **Registro de auditoria.** Não fica gravado quem importou, editou ou excluiu o
+  quê. Com poucas pessoas de confiança isso não pesa; com uma equipe maior, sim.
+- **Recuperação de senha por e-mail.** Quem esquecer depende de um admin usar o
+  botão "Redefinir senha" na tela de Usuários.

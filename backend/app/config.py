@@ -57,6 +57,18 @@ ADMIN_NOME: str = os.getenv("ADMIN_NOME", "Administrador")
 # Token do endpoint de inicialização (POST /api/admin/setup). Vazio = desativado.
 SETUP_TOKEN: str = os.getenv("SETUP_TOKEN", "")
 
+# --- Contas de proprietário criadas no primeiro boot ----------------------
+# Logins separados por vírgula. A senha vem de SENHA_INICIAL e **nunca** é
+# escrita no repositório: senha em arquivo versionado fica no histórico do Git
+# para sempre, inclusive depois de trocada. Sem SENHA_INICIAL definida, o seed
+# apenas não cria as contas — não inventa uma senha fraca no lugar.
+USUARIOS_INICIAIS: list[str] = [
+    login.strip().lower()
+    for login in os.getenv("USUARIOS_INICIAIS", "").split(",")
+    if login.strip()
+]
+SENHA_INICIAL: str = os.getenv("SENHA_INICIAL", "")
+
 
 # --- Validação de segurança do ambiente -------------------------------------
 
