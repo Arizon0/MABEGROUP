@@ -43,14 +43,55 @@ UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./uploads")
 
 # --- Autenticação (JWT) -----------------------------------------------------
 # IMPORTANTE: em produção defina SECRET_KEY por variável de ambiente.
-SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-insecure-change-me-please")
+SECRET_KEY_PADRAO = "dev-insecure-change-me-please"
+SECRET_KEY: str = os.getenv("SECRET_KEY", SECRET_KEY_PADRAO)
 JWT_ALGORITHM: str = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))
 
 # Usuário administrador criado no seed (e no startup, se ainda não existir).
 ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "admin@erp.local")
-ADMIN_SENHA: str = os.getenv("ADMIN_SENHA", "admin123")
+ADMIN_SENHA_PADRAO = "admin123"
+ADMIN_SENHA: str = os.getenv("ADMIN_SENHA", ADMIN_SENHA_PADRAO)
 ADMIN_NOME: str = os.getenv("ADMIN_NOME", "Administrador")
 
 # Token do endpoint de inicialização (POST /api/admin/setup). Vazio = desativado.
 SETUP_TOKEN: str = os.getenv("SETUP_TOKEN", "")
+
+
+# --- Validação de segurança do ambiente -------------------------------------
+
+def em_producao() -> bool:
+    """Heurística de produção: banco que não é o SQLite de desenvolvimento.
+
+    É o mesmo critério que ``main._init_db`` já usa para decidir se materializa
+    o schema no boot, então os dois concordam sobre onde a app está rodando.
+    """
+    return not DATABASE_URL.startswith("sqlite")
+
+
+def validar_configuracao() -> list[str]:
+    """Impede subir em produção com segredo de exemplo. Devolve os avisos.
+
+    ``SECRET_KEY`` no valor padrão é falha fatal: o valor está publicado neste
+    repositório, então qualquer pessoa consegue **assinar um token válido** e
+    entrar como administrador — a autenticação viraria enfeite. Já a senha do
+    admin no padrão só vira aviso: ela é trocável pela própria aplicação, e
+    derrubar o boot por causa dela deixaria o dono de fora do sistema.
+    """
+    avisos: list[str] = []
+    if not em_producao():
+        return avisos
+
+    if SECRET_KEY == SECRET_KEY_PADRAO:
+        raise RuntimeError(
+            "SECRET_KEY está no valor de exemplo, que é público neste "
+            "repositório — qualquer pessoa poderia assinar um token de "
+            "administrador. Defina SECRET_KEY com um valor aleatório antes de "
+            "expor a aplicação na internet."
+        )
+    if ADMIN_SENHA == ADMIN_SENHA_PADRAO:
+        avisos.append(
+            "ADMIN_SENHA está no valor de exemplo ('admin123'). Troque a senha "
+            "logo no primeiro acesso, em Configurações."
+        )
+    return avisos

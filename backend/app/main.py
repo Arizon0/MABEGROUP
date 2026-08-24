@@ -5,12 +5,12 @@ import logging
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.config import CORS_ORIGINS, DATABASE_URL
+from app.config import CORS_ORIGINS, DATABASE_URL, validar_configuracao
 
 log = logging.getLogger(__name__)
 
@@ -77,6 +77,7 @@ if os.getenv("INIT_DB") == "1" or not DATABASE_URL.startswith("sqlite"):
 
 from app.routers import (  # noqa: E402
     admin,
+    auth,
     compras,
     dashboard,
     dre,
@@ -90,6 +91,12 @@ from app.routers import (  # noqa: E402
     vendas,
 )
 
+from app.services.auth import get_current_user  # noqa: E402
+
+# Aborta o boot se a app estiver indo para produção com segredo de exemplo.
+for _aviso in validar_configuracao():
+    log.warning("configuração: %s", _aviso)
+
 app = FastAPI(title="ERP Multicanal — Marketplace", version="0.1.0")
 
 _libera_tudo = "*" in CORS_ORIGINS
@@ -101,18 +108,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Rotas públicas ---------------------------------------------------------
+# ``auth`` precisa ser alcançável sem token (é onde o token nasce) e ``admin``
+# tem a própria trava, o SETUP_TOKEN — é o bootstrap que roda antes de existir
+# qualquer usuário para autenticar.
+app.include_router(auth.router)
 app.include_router(admin.router)
-app.include_router(importar.router)
-app.include_router(sku_map.router)
-app.include_router(produtos.router)
-app.include_router(fornecedores.router)
-app.include_router(estoque.router)
-app.include_router(compras.router)
-app.include_router(dashboard.router)
-app.include_router(financeiro.router)
-app.include_router(relatorios.router)
-app.include_router(dre.router)
-app.include_router(vendas.router)
+
+# --- Rotas protegidas -------------------------------------------------------
+# A exigência de token é declarada **no include**, não endpoint a endpoint: um
+# endpoint novo entra protegido por padrão, e esquecer a dependência deixa de
+# ser uma forma de vazar dado financeiro. Todo endpoint abaixo responde 401 sem
+# um ``Authorization: Bearer`` válido.
+PROTEGIDO = [Depends(get_current_user)]
+
+for _router in (
+    importar.router,
+    sku_map.router,
+    produtos.router,
+    fornecedores.router,
+    estoque.router,
+    compras.router,
+    dashboard.router,
+    financeiro.router,
+    relatorios.router,
+    dre.router,
+    vendas.router,
+):
+    app.include_router(_router, dependencies=PROTEGIDO)
 
 
 @app.get("/health", tags=["infra"])

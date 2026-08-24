@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api } from "../api/client";
+import { api, baixarArquivo } from "../api/client";
 import type {
   Ads,
   Alerta,
@@ -627,6 +627,15 @@ export function AnaliseVendasPage() {
     setFiltro((f) => ({ ...f, ...mudanca, pagina: 1 }));
   }
 
+  /** Baixa um arquivo protegido, mostrando o erro na tela se falhar. */
+  async function baixar(url: string, nome: string) {
+    try {
+      await baixarArquivo(url, nome);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao baixar o arquivo");
+    }
+  }
+
   async function salvarNf(pedido: PedidoAnalisado, nf: string) {
     try {
       await api.salvarNotaFiscal(pedido.canal, pedido.id_pedido_canal, nf || null);
@@ -714,18 +723,21 @@ export function AnaliseVendasPage() {
           />
         </label>
         <div className="flex gap-2">
-          <a
-            href={api.urlExportAnalise("excel", filtro)}
-            className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Excel
-          </a>
-          <a
-            href={api.urlExportAnalise("pdf", filtro)}
-            className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            PDF
-          </a>
+          {(["excel", "pdf"] as const).map((formato) => (
+            <button
+              key={formato}
+              type="button"
+              onClick={() =>
+                void baixar(
+                  api.urlExportAnalise(formato, filtro),
+                  `analise-vendas.${formato === "excel" ? "xlsx" : "pdf"}`,
+                )
+              }
+              className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              {formato === "excel" ? "Excel" : "PDF"}
+            </button>
+          ))}
         </div>
       </div>
 

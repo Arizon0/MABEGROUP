@@ -16,15 +16,6 @@ from app.services import estoque as svc
 
 
 @pytest.fixture()
-def client(db):
-    app.dependency_overrides[get_db] = lambda: db
-    try:
-        yield TestClient(app)
-    finally:
-        app.dependency_overrides.clear()
-
-
-@pytest.fixture()
 def produto(db):
     p = Produto(sku_base="5338", nome="Retentor", estoque_minimo=Decimal("10"))
     db.add(p)

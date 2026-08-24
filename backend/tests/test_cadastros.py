@@ -11,15 +11,6 @@ CNPJ_1 = "11.222.333/0001-81"
 CNPJ_2 = "11.222.333/0002-62"
 
 
-@pytest.fixture()
-def client(db):
-    app.dependency_overrides[get_db] = lambda: db
-    try:
-        yield TestClient(app)
-    finally:
-        app.dependency_overrides.clear()
-
-
 # --------------------------------------------------------------------------- #
 # Fornecedores                                                                  #
 # --------------------------------------------------------------------------- #

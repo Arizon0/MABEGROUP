@@ -18,15 +18,6 @@ from app.services.dre import calcular_dre, upsert_despesa
 from app.seed.catalogo_seed import CATALOGO, seed_catalogo
 
 
-@pytest.fixture()
-def client(db):
-    app.dependency_overrides[get_db] = lambda: db
-    try:
-        yield TestClient(app)
-    finally:
-        app.dependency_overrides.clear()
-
-
 # --------------------------------------------------------------------------- #
 # extrair_sku — todos os exemplos oficiais do prompt                            #
 # --------------------------------------------------------------------------- #

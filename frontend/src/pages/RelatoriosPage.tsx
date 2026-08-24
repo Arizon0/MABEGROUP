@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api } from "../api/client";
+import { api, baixarArquivo } from "../api/client";
 import type { FiltroRelatorio } from "../api/client";
 import type { TipoRelatorio } from "../types/dashboard";
 
@@ -18,6 +18,15 @@ export function RelatoriosPage() {
   const [linhas, setLinhas] = useState<Linha[]>([]);
   const [colunas, setColunas] = useState<string[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+
+  /** Baixa um arquivo protegido, mostrando o erro na tela se falhar. */
+  async function baixar(url: string, nome: string) {
+    try {
+      await baixarArquivo(url, nome);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao baixar o arquivo");
+    }
+  }
 
   async function gerar() {
     setErro(null);
@@ -97,18 +106,24 @@ export function RelatoriosPage() {
           Gerar
         </button>
         <div className="ml-auto flex gap-2">
-          <a
-            href={api.urlRelatorio(tipo, "excel", filtro)}
+          <button
+            type="button"
+            onClick={() =>
+              void baixar(api.urlRelatorio(tipo, "excel", filtro), `${tipo}.xlsx`)
+            }
             className="rounded border border-green-600 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50"
           >
             Excel
-          </a>
-          <a
-            href={api.urlRelatorio(tipo, "pdf", filtro)}
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              void baixar(api.urlRelatorio(tipo, "pdf", filtro), `${tipo}.pdf`)
+            }
             className="rounded border border-red-600 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
           >
             PDF
-          </a>
+          </button>
         </div>
       </div>
 

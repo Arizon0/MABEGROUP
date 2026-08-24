@@ -1,3 +1,5 @@
+import { encerrarSessao, tokenAtual } from "./sessao";
+import type { UsuarioSessao } from "./sessao";
 import type {
   Ads,
   AdsUpsert,
@@ -63,18 +65,41 @@ function qs(params: Record<string, string | number | undefined>): string {
 
 const BASE = import.meta.env.VITE_API_URL ?? "";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const resp = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers as Record<string, string> | undefined),
-    },
-  });
+export const SESSAO_EXPIRADA = "Sessão expirada. Entre novamente.";
+
+/** Cabeçalhos de autenticação, quando há sessão. */
+function autorizacao(): Record<string, string> {
+  const token = tokenAtual();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/** Trata a resposta: 401 encerra a sessão, erro vira exceção legível. */
+async function conferir(resp: Response): Promise<Response> {
+  if (resp.status === 401) {
+    // Descartar o token aqui é o que faz a aplicação voltar para o login
+    // sozinha quando o token vence no meio do uso, em vez de encher a tela
+    // de erros que o usuário não sabe resolver.
+    encerrarSessao();
+    throw new Error(SESSAO_EXPIRADA);
+  }
   if (!resp.ok) {
     const detail = await resp.text().catch(() => resp.statusText);
     throw new Error(`HTTP ${resp.status}: ${detail}`);
   }
+  return resp;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const resp = await conferir(
+    await fetch(`${BASE}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...autorizacao(),
+        ...(init?.headers as Record<string, string> | undefined),
+      },
+    }),
+  );
   // DELETE responde 204 sem corpo; `resp.json()` rejeitaria em corpo vazio.
   if (resp.status === 204) return undefined as T;
   return (await resp.json()) as T;
@@ -83,15 +108,58 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 async function upload<T>(path: string, arquivo: File): Promise<T> {
   const form = new FormData();
   form.append("arquivo", arquivo);
-  const resp = await fetch(`${BASE}${path}`, { method: "POST", body: form });
-  if (!resp.ok) {
-    const detail = await resp.text().catch(() => resp.statusText);
-    throw new Error(`HTTP ${resp.status}: ${detail}`);
-  }
+  // Sem "Content-Type": o navegador precisa montar o boundary do multipart.
+  const resp = await conferir(
+    await fetch(`${BASE}${path}`, {
+      method: "POST",
+      body: form,
+      headers: autorizacao(),
+    }),
+  );
   return (await resp.json()) as T;
 }
 
+/** Baixa um arquivo protegido e entrega ao navegador.
+ *
+ * Um `<a href>` comum não serve mais: o navegador não manda o header de
+ * autenticação numa navegação, então o download voltaria 401. Aqui a
+ * requisição carrega o token, e o resultado vira um link temporário de blob.
+ */
+export async function baixarArquivo(url: string, nomeArquivo: string): Promise<void> {
+  const resp = await conferir(await fetch(url, { headers: autorizacao() }));
+  const blob = await resp.blob();
+  const endereco = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = endereco;
+  link.download = nomeArquivo;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(endereco);
+}
+
+export interface RespostaLogin {
+  access_token: string;
+  token_type: string;
+  usuario: UsuarioSessao;
+}
+
 export const api = {
+  // ---- Autenticação ----
+  login: (email: string, senha: string) =>
+    request<RespostaLogin>(`/api/auth/login`, {
+      method: "POST",
+      body: JSON.stringify({ email, senha }),
+    }),
+
+  eu: () => request<UsuarioSessao>(`/api/auth/me`),
+
+  trocarSenha: (senha_atual: string, senha_nova: string) =>
+    request<RespostaLogin>(`/api/auth/senha`, {
+      method: "POST",
+      body: JSON.stringify({ senha_atual, senha_nova }),
+    }),
+
   // ---- Importação de planilhas ----
   importarML: (arquivo: File) =>
     upload<ResultadoImportacao>(`/api/importar/ml`, arquivo),

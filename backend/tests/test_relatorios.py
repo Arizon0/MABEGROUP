@@ -16,15 +16,6 @@ from app.services import analytics
 from app.services.estoque import registrar_entrada
 
 
-@pytest.fixture()
-def client(db):
-    app.dependency_overrides[get_db] = lambda: db
-    try:
-        yield TestClient(app)
-    finally:
-        app.dependency_overrides.clear()
-
-
 def _venda(**kw) -> Venda:
     base = dict(
         canal="Mercado Livre", id_pedido_canal="X", status_erp="Válido",

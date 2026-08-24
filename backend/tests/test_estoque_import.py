@@ -22,15 +22,6 @@ from app.services.estoque_import import importar_estoque, parse_estoque
 
 
 @pytest.fixture()
-def client(db):
-    app.dependency_overrides[get_db] = lambda: db
-    try:
-        yield TestClient(app)
-    finally:
-        app.dependency_overrides.clear()
-
-
-@pytest.fixture()
 def cenario(db):
     db.add_all([
         Produto(sku_base="5338", nome="Retentor", preco_compra=Decimal("6.50")),

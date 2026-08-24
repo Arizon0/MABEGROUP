@@ -10,15 +10,6 @@ from app.seed import seed_sku_map
 from tests.factories import build_ml_xlsx
 
 
-@pytest.fixture()
-def client(db):
-    app.dependency_overrides[get_db] = lambda: db
-    try:
-        yield TestClient(app)
-    finally:
-        app.dependency_overrides.clear()
-
-
 def test_health(client):
     assert client.get("/health").json() == {"status": "ok"}
 

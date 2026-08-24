@@ -32,6 +32,12 @@ services:
         generateValue: true
       - key: ADMIN_EMAIL
         value: admin@erp.local
-      # Troque depois do primeiro login (Settings do serviço no Render).
+      # Senha aleatória gerada pelo Render — some do repositório e some do
+      # histórico do Git. Leia o valor uma vez em Environment do serviço e
+      # troque pela sua em "Minha conta" logo no primeiro acesso.
       - key: ADMIN_SENHA
-        value: admin123
+        generateValue: true
+      # Restringe o CORS ao próprio domínio: como a interface é servida pelo
+      # mesmo serviço, nenhuma outra origem precisa chamar esta API.
+      - key: CORS_ORIGINS
+        value: https://mabegroup-dre.onrender.com

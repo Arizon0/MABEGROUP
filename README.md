@@ -141,6 +141,35 @@ planilhas do canal não entregam reconstruídos.
 
 ---
 
+## Status — Autenticação (pré-requisito para publicar)
+
+A infraestrutura de login existia (bcrypt, JWT, `get_current_user`), mas **não
+estava conectada**: o router de auth nunca foi registrado e nenhum endpoint
+exigia token. A API inteira respondia sem credencial. Esta entrega ligou tudo.
+
+- **Trava no registro dos routers** (`main.py`): a exigência de token é
+  declarada no `include_router`, não endpoint a endpoint — endpoint novo entra
+  protegido por padrão. Públicas apenas `/health`, `/api/auth/login` e
+  `/api/admin/setup` (esta com o próprio `SETUP_TOKEN`).
+- **Varredura de regressão**: `test_todo_endpoint_de_api_exige_token` percorre
+  todas as rotas registradas e cobra 401 de cada uma.
+- **Boot defensivo**: em produção, `SECRET_KEY` no valor de exemplo **derruba o
+  boot** — esse valor é público neste repositório e permitiria a qualquer pessoa
+  assinar um token de administrador. Senha do admin no padrão vira aviso no log.
+- **Frontend**: tela de login, sessão em `localStorage`, token em toda
+  requisição (inclusive no upload de planilha), e 401 no meio do uso volta para
+  o login sozinho.
+- **Downloads**: os botões de Excel/PDF deixaram de ser `<a href>` — o navegador
+  não manda o header de autenticação numa navegação, então baixam via fetch
+  autenticado e blob.
+- **Troca de senha** em "Minha conta", exigindo a senha atual.
+- **`render.yaml`**: `SECRET_KEY` e `ADMIN_SENHA` com `generateValue`, CORS
+  restrito ao domínio do serviço.
+
+> Testes: backend **267 passed / 3 skipped**, frontend **59 passed**.
+
+---
+
 ### Roadmap concluído
 
 Prioridades 1 → 5 implementadas (parsers + SKU Map, cadastros, estoque,

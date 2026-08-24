@@ -30,15 +30,6 @@ D = Decimal
 ALIQUOTA_REFERENCIA = D("8.22")
 
 
-@pytest.fixture()
-def client(db):
-    app.dependency_overrides[get_db] = lambda: db
-    try:
-        yield TestClient(app)
-    finally:
-        app.dependency_overrides.clear()
-
-
 def nova_venda(
     db,
     *,

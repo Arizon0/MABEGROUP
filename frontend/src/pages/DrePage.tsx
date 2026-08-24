@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api } from "../api/client";
+import { api, baixarArquivo } from "../api/client";
 import type { Dre, Marketplace } from "../types/dre";
 
 const MESES = [
@@ -68,6 +68,15 @@ export function DrePage() {
     return [atual + 1, atual, atual - 1, atual - 2];
   }, []);
 
+  /** Baixa um arquivo protegido, mostrando o erro na tela se falhar. */
+  async function baixar(url: string, nome: string) {
+    try {
+      await baixarArquivo(url, nome);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao baixar o arquivo");
+    }
+  }
+
   async function salvarDespesa(grupo: string, categoria: string, valor: string) {
     await api.salvarDespesaDre({ ano, mes, grupo, categoria, valor: valor || "0" });
     await carregar();
@@ -83,18 +92,21 @@ export function DrePage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <a
-            href={api.urlExportDre(ano, mes, marketplace, "excel")}
-            className="rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Excel
-          </a>
-          <a
-            href={api.urlExportDre(ano, mes, marketplace, "pdf")}
-            className="rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            PDF
-          </a>
+          {(["excel", "pdf"] as const).map((formato) => (
+            <button
+              key={formato}
+              type="button"
+              onClick={() =>
+                void baixar(
+                  api.urlExportDre(ano, mes, marketplace, formato),
+                  `dre-${ano}-${String(mes).padStart(2, "0")}.${formato === "excel" ? "xlsx" : "pdf"}`,
+                )
+              }
+              className="rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              {formato === "excel" ? "Excel" : "PDF"}
+            </button>
+          ))}
         </div>
       </header>
 

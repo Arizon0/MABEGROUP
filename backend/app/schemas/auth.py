@@ -22,3 +22,10 @@ class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
     usuario: UsuarioOut
+
+
+class TrocaSenha(BaseModel):
+    """Troca de senha do próprio usuário autenticado."""
+
+    senha_atual: str = Field(..., min_length=1)
+    senha_nova: str = Field(..., min_length=8, max_length=128)

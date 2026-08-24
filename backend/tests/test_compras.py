@@ -19,15 +19,6 @@ from app.services import estoque as estoque_svc
 
 
 @pytest.fixture()
-def client(db):
-    app.dependency_overrides[get_db] = lambda: db
-    try:
-        yield TestClient(app)
-    finally:
-        app.dependency_overrides.clear()
-
-
-@pytest.fixture()
 def fornecedor(db):
     f = Fornecedor(
         cnpj="11222333000181", razao_social="Fornecedor X",
