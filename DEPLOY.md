@@ -36,19 +36,50 @@ na mesma URL. Login inicial: `admin@erp.local` / `admin123`.
 
 ---
 
-## Opção 2 — Publicar de graça no Render (URL pública, via GitHub)
+## Opção 2 — Publicar no Render (URL pública, via GitHub)
 
-1. Este repositório já está no GitHub.
-2. Acesse **https://dashboard.render.com** → **New** → **Blueprint**.
-3. Conecte o repositório `Arizon0/MABEGROUP` (branch da sua escolha).
-4. O Render lê o `render.yaml`, builda o `Dockerfile` e publica em
-   `https://mabegroup-dre.onrender.com` (o nome pode variar).
+O `render.yaml` publica **um serviço web** e espera um **Postgres externo**.
+Manter o banco fora do Render é proposital: os dados sobrevivem a recriar o
+serviço e não prendem a aplicação a uma hospedagem só.
 
-Pronto — sem Vercel, sem configurar frontend/backend separados.
+1. Tenha um Postgres gerenciado. No Supabase: **Connect** (botão no topo do
+   projeto) → aba **Session pooler** → copie a string.
+2. Em **https://dashboard.render.com** → **New** → **Blueprint**, conecte o
+   repositório e escolha a branch.
+3. O Render lê o `render.yaml` e **pergunta** as variáveis marcadas
+   `sync: false`. Preencha:
+   - `DATABASE_URL` — a string do passo 1, com a senha já dentro
+   - `SENHA_INICIAL` — a senha do primeiro acesso dos donos
+4. Depois do primeiro deploy, ajuste `CORS_ORIGINS` para a URL real que o
+   Render gerou.
 
-**Dados persistentes (opcional):** no Render, crie um **PostgreSQL** (plano
-free), copie a *Internal Database URL* e defina `DATABASE_URL` nas variáveis de
-ambiente do serviço web. A aplicação detecta Postgres e migra o schema sozinha.
+### Session pooler, não Direct connection
+
+O host direto do Supabase (`db.<ref>.supabase.co`) publica **apenas endereço
+IPv6**. De qualquer rede sem IPv6 a resolução falha antes de tentar conectar:
+
+```
+$ getent hosts db.<ref>.supabase.co
+(nada)                     ← só existe registro AAAA
+
+$ getent hosts aws-0-us-east-1.pooler.supabase.com
+52.45.94.125 ...           ← tem IPv4
+```
+
+Sintoma típico de ter usado a errada: `could not translate host name` ou
+`network unreachable` no log do Render. A do pooler tem o formato:
+
+```
+postgresql://postgres.<ref>:<senha>@aws-0-<regiao>.pooler.supabase.com:5432/postgres
+```
+
+Repare que o usuário muda: é `postgres.<ref>`, não `postgres`.
+
+### Senha com caracteres especiais
+
+Dentro de uma URL, precisam ser codificados: `@ : / ? # [ ]`. Caracteres como
+`!`, `$` e `*` passam sem problema. Se a senha tiver um `@`, troque por `%40` —
+senão a URL quebra no lugar errado.
 
 ---
 

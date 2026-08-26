@@ -2,15 +2,12 @@
 # Como usar:
 #   1. Suba este repositório no GitHub (já está).
 #   2. Em https://dashboard.render.com => New => Blueprint => conecte o repo.
-#   3. O Render lê este arquivo, cria o banco Postgres, builda o Dockerfile e
-#      publica em https://<nome>.onrender.com — pronto.
+#   3. O Render lê este arquivo, pergunta as variáveis marcadas `sync: false`,
+#      builda o Dockerfile e publica em https://<nome>.onrender.com.
 #
-# Os dados ficam em um PostgreSQL persistente (não somem entre deploys/restarts).
-databases:
-  - name: mabegroup-db
-    plan: free
-    databaseName: mabegroup
-    user: mabegroup
+# O banco é um PostgreSQL gerenciado **externo** (Supabase), informado em
+# DATABASE_URL. Ficar fora do Render é proposital: os dados sobrevivem a
+# recriar o serviço e não prendem a aplicação a uma hospedagem só.
 
 services:
   - type: web
@@ -21,11 +18,21 @@ services:
     healthCheckPath: /health
     autoDeploy: true
     envVars:
-      # Banco persistente: a app detecta Postgres e migra o schema sozinha.
+      # String de conexão do Postgres externo. Preenchida no painel do Render
+      # (`sync: false` faz o Blueprint perguntar), nunca neste arquivo — ela
+      # carrega a senha do banco, e senha em arquivo versionado fica no
+      # histórico do Git para sempre.
+      #
+      # Use a string do **Session pooler** do Supabase, não a "Direct
+      # connection": o host direto (db.<ref>.supabase.co) só publica endereço
+      # IPv6, e a conexão falha de qualquer rede sem IPv6. O pooler responde em
+      # IPv4 e se comporta como conexão direta.
+      #
+      #   postgresql://postgres.<ref>:<senha>@aws-0-<regiao>.pooler.supabase.com:5432/postgres
+      #
+      # A app detecta Postgres e cria/atualiza o schema sozinha no boot.
       - key: DATABASE_URL
-        fromDatabase:
-          name: mabegroup-db
-          property: connectionString
+        sync: false
       - key: INIT_DB
         value: "1"
       - key: SECRET_KEY
